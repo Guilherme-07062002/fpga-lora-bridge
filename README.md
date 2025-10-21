@@ -8,14 +8,13 @@ O transmissor lê temperatura/umidade do AHT10 (I2C) e envia periodicamente via 
 
 ## Estrutura
 - hardware/
-  - ip/colorlight_i5.py: script de SoC (LiteX) agora com flags opcionais `--with-lora`, `--with-aht10`, `--use-example-pins`.
+  - ip/colorlight_i5.py: script de SoC (LiteX) com flags `--with-lora`, `--with-aht10`, `--use-example-pins`.
   - ip/pins_colorlight_i9_ext.py: TEMPLATE de mapeamento de pinos (edite para a sua placa).
   - ip/firmware_lora.c: firmware bare-metal (scaffolding) para TX (AHT10 + LoRa via CSRs).
-  - ip/firmware.c: demo anterior do acelerador (produto escalar).
 - software/ (BitDogLab receptor)
   - include/lora_pins.h: pinos do IDC central (ajuste conforme sua fiação).
   - include/lora_rfm96.h, src/lora_rfm96.c: driver mínimo do RFM96 (RX contínuo).
-  - include/ssd1306.h, src/ssd1306.c: driver OLED.
+  - include/ssd1306.h, src/ssd1306.c: driver OLED (usa `include/font.h`).
   - software.c: app receptor (inicializa OLED + LoRa e mostra T/H recebidos).
 
 ## Pinos

@@ -25,7 +25,6 @@ from litex.soc.cores.i2c import I2CMaster
 from litex.soc.cores.spi import SPIMaster
 from litex.soc.cores.gpio import GPIOIn, GPIOOut
 
-from dot_product_wrapper import DotProductAccel
 from litedram.modules import M12L64322A # Compatible with EM638325-6H.
 from litedram.phy import GENSDRPHY, HalfRateGENSDRPHY
 
@@ -135,9 +134,7 @@ class BaseSoC(SoCCore):
             ledn = platform.request_all("user_led_n")
             self.leds = LedChaser(pads=ledn, sys_clk_freq=sys_clk_freq)
 
-    # Demo IP (produto escalar) ainda disponível para sim/testes
-    self.submodules.dotprod = DotProductAccel(self.platform)
-    self.add_csr("dotprod")
+    # (Removido) IP de produto escalar da tarefa anterior
 
         # SPI Flash --------------------------------------------------------------------------------
         if board == "i5":

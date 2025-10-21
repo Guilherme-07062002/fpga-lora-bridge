@@ -38,23 +38,11 @@ pico_sdk_init()
 add_executable(software 
         software.c 
         src/ssd1306.c 
-        src/globals.c
-        src/matriz.c
-        src/buzzer.c
-        src/display.c
-        src/internet.c
-        src/microfone.c
-        src/base64.c
-        src/joystick.c
-        src/neopixel.c
         src/lora_rfm96.c
         )
 
 pico_set_program_name(software "software")
 pico_set_program_version(software "0.1")
-
-# Generate PIO header
-pico_generate_pio_header(software ${CMAKE_CURRENT_LIST_DIR}/pio/ws2818b.pio)
 
 # Modify the below lines to enable/disable output over UART/USB
 pico_enable_stdio_uart(software 0)
@@ -73,16 +61,8 @@ target_include_directories(software PRIVATE
 
 # Add any user requested libraries
 target_link_libraries(software 
-        pico_cyw43_arch_lwip_threadsafe_background
         hardware_spi
         hardware_i2c
-        hardware_pio
-        hardware_adc
-        hardware_pwm
-        hardware_dma
-        hardware_timer
-        hardware_pio
-        hardware_clocks
         )
 
 pico_add_extra_outputs(software)
