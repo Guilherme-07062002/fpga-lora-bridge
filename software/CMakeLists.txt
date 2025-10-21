@@ -28,15 +28,15 @@ set(PICO_BOARD pico_w CACHE STRING "Board type")
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
-project(projeto-final C CXX ASM)
+project(software C CXX ASM)
 
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(projeto-final 
-        projeto-final.c 
+add_executable(software 
+        software.c 
         src/ssd1306.c 
         src/globals.c
         src/matriz.c
@@ -50,29 +50,29 @@ add_executable(projeto-final
         src/lora_rfm96.c
         )
 
-pico_set_program_name(projeto-final "projeto-final")
-pico_set_program_version(projeto-final "0.1")
+pico_set_program_name(software "software")
+pico_set_program_version(software "0.1")
 
 # Generate PIO header
-pico_generate_pio_header(projeto-final ${CMAKE_CURRENT_LIST_DIR}/pio/ws2818b.pio)
+pico_generate_pio_header(software ${CMAKE_CURRENT_LIST_DIR}/pio/ws2818b.pio)
 
 # Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(projeto-final 0)
-pico_enable_stdio_usb(projeto-final 1)
+pico_enable_stdio_uart(software 0)
+pico_enable_stdio_usb(software 1)
 
 # Add the standard library to the build
-target_link_libraries(projeto-final
+target_link_libraries(software
         pico_stdlib
         )
 
 # Add the standard include files to the build
-target_include_directories(projeto-final PRIVATE
+target_include_directories(software PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
         ${CMAKE_CURRENT_LIST_DIR}/include
 )
 
 # Add any user requested libraries
-target_link_libraries(projeto-final 
+target_link_libraries(software 
         pico_cyw43_arch_lwip_threadsafe_background
         hardware_spi
         hardware_i2c
@@ -85,5 +85,5 @@ target_link_libraries(projeto-final
         hardware_clocks
         )
 
-pico_add_extra_outputs(projeto-final)
+pico_add_extra_outputs(software)
 

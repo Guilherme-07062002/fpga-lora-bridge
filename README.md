@@ -16,7 +16,7 @@ O transmissor lê temperatura/umidade do AHT10 (I2C) e envia periodicamente via 
   - include/lora_pins.h: pinos do IDC central (ajuste conforme sua fiação).
   - include/lora_rfm96.h, src/lora_rfm96.c: driver mínimo do RFM96 (RX contínuo).
   - include/ssd1306.h, src/ssd1306.c: driver OLED.
-  - projeto-final.c: app receptor (inicializa OLED + LoRa e mostra T/H recebidos).
+  - software.c: app receptor (inicializa OLED + LoRa e mostra T/H recebidos).
 
 ## Pinos
 - LoRa (FPGA): selecione um conector IDC de 14 pinos (CN2–CN5). Sinais mínimos: SCK, MOSI, MISO, CS (NSS). Opcional: RESET, DIO0.
