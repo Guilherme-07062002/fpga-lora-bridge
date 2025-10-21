@@ -47,6 +47,7 @@ add_executable(projeto-final
         src/base64.c
         src/joystick.c
         src/neopixel.c
+        src/lora_rfm96.c
         )
 
 pico_set_program_name(projeto-final "projeto-final")
@@ -73,6 +74,7 @@ target_include_directories(projeto-final PRIVATE
 # Add any user requested libraries
 target_link_libraries(projeto-final 
         pico_cyw43_arch_lwip_threadsafe_background
+        hardware_spi
         hardware_i2c
         hardware_pio
         hardware_adc

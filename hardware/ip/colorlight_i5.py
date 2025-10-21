@@ -21,6 +21,9 @@ from litex.soc.cores.video import VideoHDMIPHY
 from litex.soc.cores.led import LedChaser
 
 from litex.soc.interconnect.csr import *
+from litex.soc.cores.i2c import I2CMaster
+from litex.soc.cores.spi import SPIMaster
+from litex.soc.cores.gpio import GPIOIn, GPIOOut
 
 from dot_product_wrapper import DotProductAccel
 from litedram.modules import M12L64322A # Compatible with EM638325-6H.
@@ -106,7 +109,10 @@ class BaseSoC(SoCCore):
         sdram_rate             = "1:1",
         with_video_terminal    = False,
         with_video_framebuffer = False,
-        **kwargs):
+    with_lora_spi          = False,
+    with_i2c_aht10         = False,
+    use_example_pins       = False,
+    **kwargs):
         board = board.lower()
         assert board in ["i5", "i9"]
         platform = colorlight_i5.Platform(board=board, revision=revision, toolchain=toolchain)
@@ -129,8 +135,9 @@ class BaseSoC(SoCCore):
             ledn = platform.request_all("user_led_n")
             self.leds = LedChaser(pads=ledn, sys_clk_freq=sys_clk_freq)
 
-        self.submodules.dotprod = DotProductAccel(self.platform)
-        self.add_csr("dotprod")
+    # Demo IP (produto escalar) ainda disponível para sim/testes
+    self.submodules.dotprod = DotProductAccel(self.platform)
+    self.add_csr("dotprod")
 
         # SPI Flash --------------------------------------------------------------------------------
         if board == "i5":
@@ -184,6 +191,43 @@ class BaseSoC(SoCCore):
             if with_video_framebuffer:
                 self.add_video_framebuffer(phy=self.videophy, timings="800x600@60Hz", clock_domain="hdmi")
 
+        # Extensões de pinos (opcionais) -----------------------------------------------------------
+        # Para facilitar o mapeamento em campo, disponibilizamos um arquivo com placeholders
+        # que podem ser ajustados para os conectores CNx (IDC 14p) e JST (I2C).
+        # Ative com --use-example-pins para carregar os exemplos e depois edite o arquivo
+        # hardware/ip/pins_colorlight_i9_ext.py conforme seu hardware real.
+        if use_example_pins:
+            try:
+                from pins_colorlight_i9_ext import lora_spi_io, i2c0_io
+                platform.add_extension(lora_spi_io)
+                platform.add_extension(i2c0_io)
+            except Exception as e:
+                print("[WARN] Falha ao carregar extensão de pinos de exemplo:", e)
+
+        # LoRa RFM96 (SPI) -------------------------------------------------------------------------
+        # Instancia um master SPI simples para conversar com o módulo RFM96 (SX1276/78 compat.)
+        # Requer um recurso de pinos nomeado "lora_spi" com subsignals: sclk, mosi, miso, cs_n.
+        if with_lora_spi:
+            try:
+                lora_pads = platform.request("lora_spi")
+                # Clock de 1 MHz por padrão; ajuste conforme necessário.
+                self.submodules.lora = SPIMaster(pads=lora_pads, data_width=8,
+                                                 sys_clk_freq=sys_clk_freq, spi_clk_freq=1e6)
+                self.add_csr("lora")
+            except Exception as e:
+                print("[ERROR] Não foi possível instanciar lora_spi. Verifique mapeamento de pinos (lora_spi).*:", e)
+
+        # I2C (AHT10) ------------------------------------------------------------------------------
+        # Instancia um I2C Master para o sensor AHT10 (endereço 0x38). Requer recurso "i2c0" com
+        # subsignals: scl, sda.
+        if with_i2c_aht10:
+            try:
+                i2c_pads = platform.request("i2c0")
+                self.submodules.i2c0 = I2CMaster(pads=i2c_pads)
+                self.add_csr("i2c0")
+            except Exception as e:
+                print("[ERROR] Não foi possível instanciar i2c0. Verifique mapeamento de pinos (i2c0).*:", e)
+
 # Build --------------------------------------------------------------------------------------------
 
 def main():
@@ -206,6 +250,10 @@ def main():
     viopts = parser.target_group.add_mutually_exclusive_group()
     viopts.add_argument("--with-video-terminal",    action="store_true", help="Enable Video Terminal (HDMI).")
     viopts.add_argument("--with-video-framebuffer", action="store_true", help="Enable Video Framebuffer (HDMI).")
+    # Recursos do projeto LoRa/AHT10
+    parser.add_target_argument("--with-lora",     action="store_true", help="Habilita SPI para módulo LoRa (RFM96).")
+    parser.add_target_argument("--with-aht10",    action="store_true", help="Habilita I2C para sensor AHT10.")
+    parser.add_target_argument("--use-example-pins", action="store_true", help="Carrega arquivo de pinos de exemplo (edite pins_colorlight_i9_ext.py).")
     args = parser.parse_args()
 
     soc = BaseSoC(board=args.board, revision=args.revision,
@@ -220,6 +268,9 @@ def main():
         sdram_rate             = args.sdram_rate,
         with_video_terminal    = args.with_video_terminal,
         with_video_framebuffer = args.with_video_framebuffer,
+        with_lora_spi          = args.with_lora,
+        with_i2c_aht10         = args.with_aht10,
+        use_example_pins       = args.use_example_pins,
         **parser.soc_argdict
     )
     soc.platform.add_extension(colorlight_i5._sdcard_pmod_io)
