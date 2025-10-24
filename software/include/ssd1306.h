@@ -269,6 +269,6 @@ void ssd1306_draw_string_with_font(ssd1306_t *p, uint32_t x, uint32_t y, uint32_
 	@param[in] scale : scale font to n times of original size (default should be 1)
 	@param[in] s : text to draw
 */
-void ssd1306_draw_string(ssd1306_t *p, uint32_t x, uint32_t y, uint32_t scale, const char *s);
+void ssd1306_draw_string(ssd1306_t *p, int32_t x, int32_t y, int32_t scale, const char *s);
 
 #endif

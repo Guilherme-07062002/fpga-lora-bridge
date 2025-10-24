@@ -28,12 +28,8 @@ static void oled_init_and_clear(void){
 
 static void oled_print_lines(const char* l1, const char* l2){
     ssd1306_clear(&disp);
-    // Desenha texto básico com pixels (utilize seu próprio renderer se preferir)
-    // Aqui: desenhar simples blocos como placeholder
-    // Para simplicidade, mostramos só duas linhas com caracteres limitados
-    // Recomenda-se integrar um drawText se disponível
-    // Exibição mínima
-    (void)l1; (void)l2;
+    ssd1306_draw_string(&disp, 0, 0, 2, l1);
+    ssd1306_draw_string(&disp, 0, 18, 2, l2);
     ssd1306_show(&disp);
 }
 
