@@ -1,0 +1,27 @@
+# Global ignores for build artifacts and local tools
+
+# LiteX/firmware build outputs
+hardware/ip/*.o
+hardware/ip/*.d
+hardware/ip/*.elf
+hardware/ip/*.bin
+hardware/ip/*.map
+
+# Simulation artifacts
+hardware/sim/*.vvp
+hardware/sim/*.vcd
+
+# Python caches
+**/__pycache__/
+*.pyc
+
+# CMake build dirs (Pico)
+software/build/
+software/.cmake/
+software/CMakeFiles/
+software/CMakeCache.txt
+software/compile_commands.json
+
+# Editor/OS
+.DS_Store
+Thumbs.db
