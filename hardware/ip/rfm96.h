@@ -18,6 +18,7 @@
 #define RFM96_REG_IRQ_FLAGS             0x12
 #define RFM96_REG_MODEM_CONFIG_1        0x1D
 #define RFM96_REG_MODEM_CONFIG_2        0x1E
+#define RFM96_REG_MODEM_CONFIG_3        0x26
 #define RFM96_REG_PAYLOAD_LENGTH        0x22
 #define RFM96_REG_DIO_MAPPING_1         0x40
 #define RFM96_REG_VERSION               0x42

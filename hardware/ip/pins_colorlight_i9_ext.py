@@ -17,9 +17,10 @@ Notas:
 from litex.build.generic_platform import Subsignal, Pins, IOStandard
 
 # Mapeamento para LoRa RFM96 via SPI (conector CN4, padrão BitDogLab)
+# Observação: o core SPIMaster espera o subsinal "clk" (não "sclk").
 lora_spi_io = [
     ("lora_spi", 0,
-        Subsignal("sclk", Pins("CN4:1")),  # SCK
+        Subsignal("clk",  Pins("CN4:1")),  # SCK (nome esperado pelo core)
         Subsignal("mosi", Pins("CN4:2")),  # MOSI
         Subsignal("miso", Pins("CN4:3")),  # MISO
         Subsignal("cs_n", Pins("CN4:4")),  # CS (NSS)
