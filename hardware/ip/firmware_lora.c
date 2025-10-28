@@ -1,4 +1,4 @@
-// Firmware TX bare-metal (RISC-V) para enviar mock de temperatura/umidade via LoRa (RFM96)
+// Firmware TX bare-metal (RISC-V) para enviar mock de temperatura/umidade via LoRa (RFM9X)
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,7 +10,7 @@
 #include <uart.h>
 #include <generated/csr.h>
 
-#include "rfm96.h"
+#include "rfm9x.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -82,10 +82,15 @@ static void prompt(void)
 static void help(void)
 {
     puts("Available commands:");
-    puts("help                            - this command");
-    puts("reboot                          - reboot CPU");
-    puts("led                             - led test");
-    puts("lora-bridge                     - lora bridge");
+    puts("help - this command");
+    puts("reboot - reboot CPU");
+    puts("led - led test");
+    puts("lora_info - lora read 0x42");
+    puts("lora_select - lora read 0x42");
+    puts("lora_deselect - lora read 0x42");
+    puts("lora_click - lora read 0x42");
+    puts("lora_setup - lora read 0x42");
+    puts("sensor_read - lora read 0x42");
 }
 
 static void reboot(void)
@@ -101,6 +106,36 @@ static void toggle_led(void)
     leds_out_write(!i);
 }
 
+static void lora_info(void)
+{
+    printf("lendo do lora...\n");
+    printf("Ret: %x\n", rfm9x_read(0x42));
+}
+
+static void lora_select(void)
+{
+    printf("selecionando...\n");
+    rfm9x_select();
+}
+
+static void lora_deselect(void)
+{
+    printf("deselecionando...\n");
+    rfm9x_deselect();
+}
+
+static void lora_setup(void)
+{
+    printf("setupeando...\n");
+    rfm9x_setup(915E6);
+}
+
+static void lora_click(void)
+{
+    printf("click...\n");
+    rfm9x_send("CLICK");
+}
+
 // Frequência do LoRa em MHz (US915 para BR)
 #define LORA_FREQUENCY 915.0f
 
@@ -108,8 +143,8 @@ static void toggle_led(void)
 // Digite 'exit' (ou 'quit'/'q') para sair e voltar ao prompt.
 static void lora_bridge(void)
 {
-    printf("\n[LoRa Bridge] Inicializando RFM96 em %.1f MHz... ", (double)LORA_FREQUENCY);
-    if (!rfm96_init(LORA_FREQUENCY)) {
+    printf("\n[LoRa Bridge] Inicializando RFM9X em %.1f MHz... ", (double)LORA_FREQUENCY);
+    if (!rfm9x_init(LORA_FREQUENCY)) {
         printf("FALHA (verifique SPI/pinos)\n");
         return;
     }
@@ -133,9 +168,9 @@ static void lora_bridge(void)
             putsnonl("BRIDGE>");
             continue;
         }
-        if (len > 255) len = 255; // rfm96_send_packet aceita uint8_t
+        if (len > 255) len = 255; // rfm9x_send_packet aceita uint8_t
 
-        rfm96_send_packet((uint8_t*)line, (uint8_t)len);
+        rfm9x_send_packet((uint8_t*)line, (uint8_t)len);
         printf("[LoRa Bridge] TX (%uB): %s\n", (unsigned)len, line);
         putsnonl("BRIDGE>");
     }
@@ -154,8 +189,20 @@ static void console_service(void) {
         reboot();
     else if(strcmp(token, "led") == 0)
         toggle_led();
-    else if(strcmp(token, "lora-bridge") == 0)
+    else if(strcmp(token, "lora_info") == 0)
+        lora_info();
+    else if(strcmp(token, "lora_select") == 0)
+        lora_select();
+    else if(strcmp(token, "lora_deselect") == 0)
+        lora_deselect();
+    else if(strcmp(token, "lora_click") == 0)
+        lora_click();
+    else if(strcmp(token, "lora_setup") == 0)
+        lora_setup();
+    else if(strcmp(token, "lora_bridge") == 0)
         lora_bridge();
+    else
+        printf("Unknown command: %s\n", token);
     prompt();
 }
 
@@ -195,9 +242,9 @@ int main(void) {
 
     printf("--- FPGA LoRa Transmitter (mock AHT10) ---\n");
 
-    // Inicializa o módulo LoRa RFM96 via SPI do LiteX (CSR prefixo: lora_*)
-    printf("Initializing LoRa RFM96... ");
-    if (!rfm96_init(LORA_FREQUENCY)) {
+    // Inicializa o módulo LoRa RFM9X via SPI do LiteX (CSR prefixo: lora_*)
+    printf("Initializing LoRa RFM9X... ");
+    if (!rfm9x_init(LORA_FREQUENCY)) {
         printf("FAILED (check SPI/pins)\n");
         return -1;
     }
@@ -215,7 +262,7 @@ int main(void) {
         if (n < 0) n = 0; if (n > (int)sizeof(payload)) n = sizeof(payload);
 
         // Envia via LoRa
-        rfm96_send_packet((uint8_t*)payload, (uint8_t)n);
+        rfm9x_send_packet((uint8_t*)payload, (uint8_t)n);
         printf("TX #%lu: %s", (unsigned long)(++count), payload);
 
         // Periodicidade de 10s
