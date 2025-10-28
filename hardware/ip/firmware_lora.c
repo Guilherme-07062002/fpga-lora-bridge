@@ -101,26 +101,6 @@ static void toggle_led(void)
     leds_out_write(!i);
 }
 
-
-static void calc_fibonacci(void)
-{
-    unsigned int n, result;
-    printf("digite o n (nao aparece)\n");
-    scanf("%u", &n);
-    printf("%u\n", n);
-
-    // escreve n e start
-    fibonacci_n_write(n);
-    fibonacci_start_write(1);
-
-    // espera cálculo terminar
-    while (fibonacci_busy_read());
-
-    // lê resultado
-    result = fibonacci_result_read();
-    printf("fibonacci(%u) = %u\n", n, result);
-}
-
 // Frequência do LoRa em MHz (US915 para BR)
 #define LORA_FREQUENCY 915.0f
 
@@ -174,8 +154,6 @@ static void console_service(void) {
         reboot();
     else if(strcmp(token, "led") == 0)
         toggle_led();
-    else if(strcmp(token, "fibo") == 0)
-        calc_fibonacci();
     else if(strcmp(token, "lora-bridge") == 0)
         lora_bridge();
     prompt();
