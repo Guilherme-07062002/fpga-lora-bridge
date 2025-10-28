@@ -7,7 +7,6 @@
 #include <string.h>
 #include "globals.h"
 #include "microfone.h"
-#include "buzzer.h"
 #include "display.h"
 #include "matriz.h"
 #include "base64.h"

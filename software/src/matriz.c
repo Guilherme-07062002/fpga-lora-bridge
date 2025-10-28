@@ -31,9 +31,6 @@ void draw_notification() {
     npSetLED(17, 0, 100, 0);  
     npSetLED(22, 0, 100, 0);  
 
-    // Emitir notificação
-    beep(BUZZER_PIN, 100); // Bipe de 500ms
-
     npWrite();
     sleep_ms(500);
 }

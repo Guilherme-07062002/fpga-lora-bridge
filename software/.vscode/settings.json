@@ -51,7 +51,6 @@
         "internet.h": "c",
         "tcp.h": "c",
         "display.h": "c",
-        "buzzer.h": "c",
         "matriz.h": "c",
         "microfone.h": "c",
         "neopixel.h": "c",
