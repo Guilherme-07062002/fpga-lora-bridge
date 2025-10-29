@@ -25,3 +25,4 @@ software/compile_commands.json
 # Editor/OS
 .DS_Store
 Thumbs.db
+spi-i2c

@@ -15,9 +15,9 @@ if(WIN32)
 else()
     set(USERHOME $ENV{HOME})
 endif()
-set(sdkVersion 1.5.1)
-set(toolchainVersion 13_2_Rel1)
-set(picotoolVersion 2.0.0)
+set(sdkVersion 2.2.0)
+set(toolchainVersion 14_2_Rel1)
+set(picotoolVersion 2.2.0-a4)
 set(picoVscode ${USERHOME}/.pico-sdk/cmake/pico-vscode.cmake)
 if (EXISTS ${picoVscode})
     include(${picoVscode})
@@ -35,34 +35,39 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(software 
-        software.c 
-        src/ssd1306.c 
-        src/lora_rfm96.c
-        )
+add_executable(software software.c inc/ssd1306.c inc/ssd1306_fonts.c inc/lora_RFM95.c)
 
 pico_set_program_name(software "software")
 pico_set_program_version(software "0.1")
 
+# Generate PIO header
+pico_generate_pio_header(software ${CMAKE_CURRENT_LIST_DIR}/blink.pio)
+
 # Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(software 0)
+pico_enable_stdio_uart(software 1)
 pico_enable_stdio_usb(software 1)
 
 # Add the standard library to the build
 target_link_libraries(software
-        pico_stdlib
-        )
+        pico_stdlib)
 
 # Add the standard include files to the build
 target_include_directories(software PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
-        ${CMAKE_CURRENT_LIST_DIR}/include
+        ${CMAKE_CURRENT_LIST_DIR}/inc
 )
 
 # Add any user requested libraries
 target_link_libraries(software 
         hardware_spi
         hardware_i2c
+        hardware_dma
+        hardware_pio
+        hardware_interp
+        hardware_timer
+        hardware_watchdog
+        hardware_clocks
+        
         )
 
 pico_add_extra_outputs(software)
