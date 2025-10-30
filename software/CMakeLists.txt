@@ -35,7 +35,7 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(software software.c inc/ssd1306.c inc/ssd1306_fonts.c inc/lora_RFM95.c)
+add_executable(software software.c inc/ssd1306.c inc/ssd1306_fonts.c inc/lora_rfm95.c)
 
 pico_set_program_name(software "software")
 pico_set_program_version(software "0.1")

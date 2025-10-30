@@ -1,5 +1,3 @@
-// lora_RFM95.h
-
 #ifndef LORA_RFM95_H_
 #define LORA_RFM95_H_
 

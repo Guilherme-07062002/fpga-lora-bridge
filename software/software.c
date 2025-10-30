@@ -1,12 +1,12 @@
- #include <stdio.h>
- #include <math.h> 
- #include <stdlib.h>
- #include <string.h>
- #include "ssd1306.h"
- #include "ssd1306_fonts.h"
- #include "pico/stdlib.h"
- #include "hardware/i2c.h"
- #include "lora_RFM95.h"
+#include <stdio.h>
+#include <math.h> 
+#include <stdlib.h>
+#include <string.h>
+#include "ssd1306.h"
+#include "ssd1306_fonts.h"
+#include "pico/stdlib.h"
+#include "hardware/i2c.h"
+#include "lora_rfm95.h"
 
 // ==========================================================
 // ===         PINAGEM E CONFIGURAÇÕES GLOBAIS            ===

@@ -1,10 +1,8 @@
-// lora_RFM95.c
-
 #include <stdio.h>
 #include <string.h>
 #include "pico/stdlib.h"
 #include "hardware/irq.h"
-#include "lora_RFM95.h"
+#include "lora_rfm95.h"
 
 // ============================
 // DEFINIÇÕES E REGISTRADORES INTERNOS
