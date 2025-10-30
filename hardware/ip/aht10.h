@@ -4,49 +4,53 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-// ============================================
-// === Struct de Dados ===
-// ============================================
+// -------------------------------------------------------------
+// Estruturas de dados
+// -------------------------------------------------------------
 /**
- * @brief Estrutura para armazenar dados do sensor.
- * Valores são multiplicados por 100 para evitar ponto flutuante.
+ * @brief Container para valores de temperatura e umidade coletados.
+ *
+ * Observação: os valores são representados como inteiros escalados por 100
+ * para evitar uso de ponto-flutuante no firmware (ex.: 2534 -> 25.34).
  */
 typedef struct {
-    int16_t temperatura; // Temperatura * 100
-    int16_t umidade;     // Umidade * 100
+    int16_t temperatura; // temperatura em centésimos de grau (°C * 100)
+    int16_t umidade;     // umidade relativa em centésimos (%% * 100)
 } dados;
 
 
-// ============================================
-// === Protótipos Públicos ===
-// ============================================
-
+// -------------------------------------------------------------
+// Interface pública (protótipos)
+// -------------------------------------------------------------
 /**
- * @brief Inicializa o driver I2C bitbang.
- * Deve ser chamada antes de qualquer outra função I2C ou AHT10.
+ * @brief Configura o driver I2C em modo bit-bang.
+ *
+ * Deve ser chamada antes de usar quaisquer funções que dependam do barramento.
  */
 void i2c_init(void);
 
 /**
- * @brief Varre o barramento I2C e imprime endereços de dispositivos encontrados.
+ * @brief Faz um escaneamento simples do barramento I2C e loga endereços detectados.
  */
 void i2c_scan(void);
 
 /**
- * @brief Inicializa o sensor AHT10.
- * @return 0 em sucesso, -1 em falha.
+ * @brief Executa a sequência de inicialização do AHT10.
+ *
+ * @return 0 em caso de sucesso, -1 se ocorreu algum erro na comunicação.
  */
 int aht10_init(void);
 
 /**
- * @brief Lê o sensor AHT10 e imprime os valores formatados (Debug).
+ * @brief Leitura de depuração: lê o sensor e imprime os valores formatados.
  */
 void aht10_read(void);
 
 /**
- * @brief Obtém os dados de temperatura e umidade do AHT10.
- * @param d Ponteiro para a struct 'dados' onde os resultados serão armazenados.
- * @return true em sucesso, false em falha.
+ * @brief Solicita leitura ao AHT10 e preenche a struct fornecida.
+ *
+ * @param d Ponteiro para a struct onde temperatura e umidade serão gravadas.
+ * @return true se a leitura foi bem sucedida, false caso contrário.
  */
 bool aht10_get_data(dados *d);
 

@@ -24,12 +24,10 @@ from litex.build.generic_platform import Subsignal, Pins, IOStandard
 from litex.soc.interconnect.csr import *
 from litex.soc.cores.bitbang import I2CMaster
 from litex.soc.cores.spi import SPIMaster
-from litex.soc.cores.gpio import GPIOIn, GPIOOut
+from litex.soc.cores.gpio import GPIOOut
 
-from litedram.modules import M12L64322A # Compatible with EM638325-6H.
+from litedram.modules import M12L64322A
 from litedram.phy import GENSDRPHY, HalfRateGENSDRPHY
-
-from liteeth.phy.ecp5rgmii import LiteEthPHYRGMII
 
 # CRG ----------------------------------------------------------------------------------------------
 
