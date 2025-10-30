@@ -19,6 +19,7 @@ from litex.soc.integration.soc_core import *
 from litex.soc.integration.builder import *
 from litex.soc.cores.video import VideoHDMIPHY
 from litex.soc.cores.led import LedChaser
+from litex.build.generic_platform import Subsignal, Pins, IOStandard
 
 from litex.soc.interconnect.csr import *
 from litex.soc.cores.i2c import I2CMaster
@@ -98,20 +99,12 @@ class _CRG(LiteXModule):
 
 class BaseSoC(SoCCore):
     def __init__(self, board="i5", revision="7.0", toolchain="trellis", sys_clk_freq=60e6,
-        with_ethernet          = False,
-        with_etherbone         = False,
-        local_ip               = "",
-        remote_ip              = "",
-        eth_phy                = 0,
         with_led_chaser        = True,
         use_internal_osc       = False,
         sdram_rate             = "1:1",
         with_video_terminal    = False,
         with_video_framebuffer = False,
-    with_lora_spi          = False,
-    with_i2c_aht10         = False,
-    use_example_pins       = False,
-    **kwargs):
+        **kwargs):
         board = board.lower()
         assert board in ["i5", "i9"]
         platform = colorlight_i5.Platform(board=board, revision=revision, toolchain=toolchain)
@@ -134,9 +127,7 @@ class BaseSoC(SoCCore):
             ledn = platform.request_all("user_led_n")
             self.leds = LedChaser(pads=ledn, sys_clk_freq=sys_clk_freq)
 
-    # (Removido) IP de produto escalar da tarefa anterior
-
-        # SPI Flash --------------------------------------------------------------------------------
+    # SPI Flash --------------------------------------------------------------------------------
         if board == "i5":
             from litespi.modules import GD25Q16 as SpiFlashModule
         if board == "i9":
@@ -155,75 +146,44 @@ class BaseSoC(SoCCore):
                 l2_cache_size = kwargs.get("l2_size", 8192)
             )
 
-        # Ethernet / Etherbone ---------------------------------------------------------------------
-        if with_ethernet or with_etherbone:
-            self.ethphy = LiteEthPHYRGMII(
-                clock_pads = self.platform.request("eth_clocks", eth_phy),
-                pads       = self.platform.request("eth", eth_phy),
-                tx_delay = 0)
-            if with_ethernet:
-                self.add_ethernet(phy=self.ethphy)
-            if with_etherbone:
-                self.add_etherbone(phy=self.ethphy)
+        # Configuração dos pinos SPI (para LoRa RFM95) -----------------------------------------------
+        spi_pads = [
+            ("spi", 0,
+                Subsignal("clk",  Pins("G20")),
+                Subsignal("mosi", Pins("L18")),
+                Subsignal("miso", Pins("M18")),
+                Subsignal("cs_n", Pins("N17")),
+                IOStandard("LVCMOS33")
+            ),
+            # RESET separado como GPIO
+            ("lora_reset", 0, Pins("L20"), IOStandard("LVCMOS33"))
+        ]
 
-        if local_ip:
-            local_ip = local_ip.split(".")
-            self.add_constant("LOCALIP1", int(local_ip[0]))
-            self.add_constant("LOCALIP2", int(local_ip[1]))
-            self.add_constant("LOCALIP3", int(local_ip[2]))
-            self.add_constant("LOCALIP4", int(local_ip[3]))
+        platform.add_extension(spi_pads)
 
-        if remote_ip:
-            remote_ip = remote_ip.split(".")
-            self.add_constant("REMOTEIP1", int(remote_ip[0]))
-            self.add_constant("REMOTEIP2", int(remote_ip[1]))
-            self.add_constant("REMOTEIP3", int(remote_ip[2]))
-            self.add_constant("REMOTEIP4", int(remote_ip[3]))
+        # Adiciona o Core SPI Master e o CSR 'spi'
+        self.spi = SPIMaster(pads=platform.request("spi"), data_width=8, sys_clk_freq=sys_clk_freq, spi_clk_freq=1e6)
+        self.add_csr("spi")
 
-        # Video ------------------------------------------------------------------------------------
-        if with_video_terminal or with_video_framebuffer:
-            self.videophy = VideoHDMIPHY(platform.request("gpdi"), clock_domain="hdmi")
-            if with_video_terminal:
-                self.add_video_terminal(phy=self.videophy, timings="800x600@60Hz", clock_domain="hdmi")
-            if with_video_framebuffer:
-                self.add_video_framebuffer(phy=self.videophy, timings="800x600@60Hz", clock_domain="hdmi")
+        # Adiciona o Core GPIOOut e o CSR 'lora_reset'
+        self.submodules.lora_reset = GPIOOut(platform.request("lora_reset"))
+        self.add_csr("lora_reset")
 
-        # Extensões de pinos (opcionais) -----------------------------------------------------------
-        # Para facilitar o mapeamento em campo, disponibilizamos um arquivo com placeholders
-        # que podem ser ajustados para os conectores CNx (IDC 14p) e JST (I2C).
-        # Ative com --use-example-pins para carregar os exemplos e depois edite o arquivo
-        # hardware/ip/pins_colorlight_i9_ext.py conforme seu hardware real.
-        if use_example_pins:
-            try:
-                from pins_colorlight_i9_ext import lora_spi_io, i2c0_io
-                platform.add_extension(lora_spi_io)
-                platform.add_extension(i2c0_io)
-            except Exception as e:
-                print("[WARN] Falha ao carregar extensão de pinos de exemplo:", e)
+        # Configuração dos pinos I2C (para AHT10) ---------------------------------------------------
+        i2c_pads = [
+            ("i2c", 0,
+                Subsignal("scl", Pins("U17")),
+                Subsignal("sda", Pins("U18")),
+                IOStandard("LVCMOS33")
+            )
+        ]
 
-        # LoRa RFM96 (SPI) -------------------------------------------------------------------------
-        # Instancia um master SPI simples para conversar com o módulo RFM96 (SX1276/78 compat.)
-        # Requer um recurso de pinos nomeado "lora_spi" com subsignals: sclk, mosi, miso, cs_n.
-        if with_lora_spi:
-            try:
-                lora_pads = platform.request("lora_spi")
-                # Clock de 1 MHz por padrão; ajuste conforme necessário.
-                self.submodules.lora = SPIMaster(pads=lora_pads, data_width=8,
-                                                 sys_clk_freq=sys_clk_freq, spi_clk_freq=1e6)
-                self.add_csr("lora")
-            except Exception as e:
-                print("[ERROR] Não foi possível instanciar lora_spi. Verifique mapeamento de pinos (lora_spi).*:", e)
-
-        # I2C (AHT10) ------------------------------------------------------------------------------
-        # Instancia um I2C Master para o sensor AHT10 (endereço 0x38). Requer recurso "i2c0" com
-        # subsignals: scl, sda.
-        if with_i2c_aht10:
-            try:
-                i2c_pads = platform.request("i2c0")
-                self.submodules.i2c0 = I2CMaster(pads=i2c_pads)
-                self.add_csr("i2c0")
-            except Exception as e:
-                print("[ERROR] Não foi possível instanciar i2c0. Verifique mapeamento de pinos (i2c0).*:", e)
+        platform.add_extension(i2c_pads)
+        
+        # Adiciona o Core I2CMaster (Bitbang) e o CSR 'i2c'
+        self.submodules.i2c = I2CMaster(pads=platform.request("i2c"))
+        self.add_csr("i2c")
+   
 
 # Build --------------------------------------------------------------------------------------------
 
@@ -251,18 +211,19 @@ def main():
     parser.add_target_argument("--with-lora",     action="store_true", help="Habilita SPI para módulo LoRa (RFM96).")
     parser.add_target_argument("--with-aht10",    action="store_true", help="Habilita I2C para sensor AHT10.")
     parser.add_target_argument("--use-example-pins", action="store_true", help="Carrega arquivo de pinos de exemplo (edite pins_colorlight_i9_ext.py).")
+    
     args = parser.parse_args()
 
     soc = BaseSoC(board=args.board, revision=args.revision,
         toolchain              = args.toolchain,
         sys_clk_freq           = args.sys_clk_freq,
         with_ethernet          = args.with_ethernet,
+        sdram_rate             = args.sdram_rate,
         with_etherbone         = args.with_etherbone,
         local_ip               = args.local_ip,
         remote_ip              = args.remote_ip,
         eth_phy                = args.eth_phy,
         use_internal_osc       = args.use_internal_osc,
-        sdram_rate             = args.sdram_rate,
         with_video_terminal    = args.with_video_terminal,
         with_video_framebuffer = args.with_video_framebuffer,
         with_lora_spi          = args.with_lora,

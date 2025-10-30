@@ -8,266 +8,164 @@
 
 #include <irq.h>
 #include <uart.h>
-#include <generated/csr.h>
-
-#include "rfm9x.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include <irq.h>
-#include <uart.h>
 #include <console.h>
 #include <generated/csr.h>
+#include <generated/soc.h>
+#include <system.h>
 
-static char *readstr(void)
-{
-    char c[2];
-    static char s[64];
-    static int ptr = 0;
+// Inclui a biblioteca do sensor AHT10
+#include "aht10.h"
 
-    if(readchar_nonblock()) {
-        c[0] = readchar();
-        c[1] = 0;
-        switch(c[0]) {
-            case 0x7f:
-            case 0x08:
-                if(ptr > 0) {
-                    ptr--;
-                    putsnonl("\x08 \x08");
-                }
-                break;
-            case 0x07:
-                break;
-            case '\r':
-            case '\n':
-                s[ptr] = 0x00;
-                putsnonl("\n");
-                ptr = 0;
-                return s;
-            default:
-                if(ptr >= (sizeof(s) - 1))
-                    break;
-                putsnonl(c);
-                s[ptr] = c[0];
-                ptr++;
-                break;
+// Inclui a biblioteca LoRa
+#include "lora_RFM95.h"
+
+// ============================================
+// === Protótipos (Locais do main.c) ===
+// ============================================
+static void send_sensor_data(void);
+static void busy_wait_ms(unsigned int ms); // <<< Adicionado de volta
+
+// ============================================
+// === Utils de tempo ===
+// ============================================
+// Função de espera adicionada de volta a main.c
+static void busy_wait_ms(unsigned int ms) {
+    for (unsigned int i = 0; i < ms; ++i) {
+#ifdef CSR_TIMER0_BASE
+        busy_wait_us(1000);
+#else
+        // Fallback simples se o timer0 não estiver definido
+        for(volatile int j = 0; j < 2000; j++); // Ajuste conforme necessário
+#endif
+    }
+}
+
+
+// ============================================
+// === Console ===
+// ============================================
+
+/* Função de aplicação: Lê o sensor AHT10 e envia os dados via LoRa */
+static void send_sensor_data(void) {
+    dados my_data; // Struct 'dados' definida em aht10.h
+    printf("Lendo dados do sensor AHT10...\n");
+
+    if (aht10_get_data(&my_data)) {
+        printf("  Temperatura: %d.%02d C\n", my_data.temperatura/100, abs(my_data.temperatura) % 100);
+        printf("  Umidade: %d.%02d %%\n", my_data.umidade/100, abs(my_data.umidade) % 100);
+
+        // Chama a função da biblioteca LoRa
+        if (!lora_send_bytes((uint8_t*)&my_data, sizeof(dados))) {
+             printf("Erro durante o envio LoRa (verificar log da biblioteca).\n");
         }
+    } else {
+        printf("Erro ao ler dados do AHT10. Envio LoRa abortado.\n");
     }
-    return NULL;
 }
 
-static char *get_token(char **str)
-{
-    char *c, *d;
 
-    c = (char *)strchr(*str, ' ');
-    if(c == NULL) {
-        d = *str;
-        *str = *str+strlen(*str);
-        return d;
-    }
-    *c = 0;
-    d = *str;
-    *str = c+1;
-    return d;
-}
-
-static void prompt(void)
-{
-    printf("RUNTIME>");
-}
-
-static void help(void)
-{
-    puts("Available commands:");
-    puts("help - this command");
-    puts("reboot - reboot CPU");
-    puts("led - led test");
-    puts("lora_info - lora read 0x42");
-    puts("lora_select - lora read 0x42");
-    puts("lora_deselect - lora read 0x42");
-    puts("lora_click - lora read 0x42");
-    puts("lora_setup - lora read 0x42");
-    puts("sensor_read - lora read 0x42");
-}
-
-static void reboot(void)
-{
-    ctrl_reset_write(1);
-}
-
-static void toggle_led(void)
-{
-    int i;
-    printf("invertendo led...\n");
-    i = leds_out_read();
-    leds_out_write(!i);
-}
-
-static void lora_info(void)
-{
-    printf("lendo do lora...\n");
-    printf("Ret: %x\n", rfm9x_read(0x42));
-}
-
-static void lora_select(void)
-{
-    printf("selecionando...\n");
-    rfm9x_select();
-}
-
-static void lora_deselect(void)
-{
-    printf("deselecionando...\n");
-    rfm9x_deselect();
-}
-
-static void lora_setup(void)
-{
-    printf("setupeando...\n");
-    rfm9x_setup(915E6);
-}
-
-static void lora_click(void)
-{
-    printf("click...\n");
-    rfm9x_send("CLICK");
-}
-
-// Frequência do LoRa em MHz (US915 para BR)
+// // Frequência do LoRa em MHz (US915 para BR)
 #define LORA_FREQUENCY 915.0f
 
-// Modo bridge: tudo que chegar como linha no console é enviado via LoRa.
-// Digite 'exit' (ou 'quit'/'q') para sair e voltar ao prompt.
-static void lora_bridge(void)
-{
-    printf("\n[LoRa Bridge] Inicializando RFM9X em %.1f MHz... ", (double)LORA_FREQUENCY);
-    if (!rfm9x_init(LORA_FREQUENCY)) {
-        printf("FALHA (verifique SPI/pinos)\n");
-        return;
-    }
-    printf("OK\n");
-
-    puts("[LoRa Bridge] Digite uma linha e pressione Enter para transmitir.");
-    puts("[LoRa Bridge] Para sair: 'exit' | 'quit' | 'q'.");
-    putsnonl("BRIDGE>");
-
-    while (1) {
-        char *line = readstr();
-        if (line == NULL) continue; // aguarda linha completa
-
-        if ((strcmp(line, "exit") == 0) || (strcmp(line, "quit") == 0) || (strcmp(line, "q") == 0)) {
-            puts("[LoRa Bridge] Encerrando bridge.\n");
-            break;
-        }
-
-        size_t len = strlen(line);
-        if (len == 0) {
-            putsnonl("BRIDGE>");
-            continue;
-        }
-        if (len > 255) len = 255; // rfm9x_send_packet aceita uint8_t
-
-        rfm9x_send_packet((uint8_t*)line, (uint8_t)len);
-        printf("[LoRa Bridge] TX (%uB): %s\n", (unsigned)len, line);
-        putsnonl("BRIDGE>");
-    }
-}
-
-static void console_service(void) {
-    char *str;
-    char *token;
-
-    str = readstr();
-    if(str == NULL) return;
-    token = get_token(&str);
-    if(strcmp(token, "help") == 0)
-        help();
-    else if(strcmp(token, "reboot") == 0)
-        reboot();
-    else if(strcmp(token, "led") == 0)
-        toggle_led();
-    else if(strcmp(token, "lora_info") == 0)
-        lora_info();
-    else if(strcmp(token, "lora_select") == 0)
-        lora_select();
-    else if(strcmp(token, "lora_deselect") == 0)
-        lora_deselect();
-    else if(strcmp(token, "lora_click") == 0)
-        lora_click();
-    else if(strcmp(token, "lora_setup") == 0)
-        lora_setup();
-    else if(strcmp(token, "lora_bridge") == 0)
-        lora_bridge();
-    else
-        printf("Unknown command: %s\n", token);
-    prompt();
-}
-
-// Gera valores mock (sem usar I2C/AHT10 por enquanto)
-static void mock_read_temp_hum(float *t_c, float *h_rh, uint32_t iter) {
-    // Varia entre 22.0..28.0 C e 40..70 %RH de forma suave
-    float base_t = 25.0f;
-    float base_h = 55.0f;
-    float dt = (float)((iter % 50) - 25) / 50.0f; // -0.5 .. +0.5
-    float dh = (float)((iter % 60) - 30) / 30.0f; // -1.0 .. +1.0
-    *t_c = base_t + dt * 6.0f;
-    *h_rh = base_h + dh * 15.0f;
-}
-
+// ============================================
+// === main ===
+// ============================================
 int main(void) {
-
-    #ifdef CONFIG_CPU_HAS_INTERRUPT
+#ifdef CONFIG_CPU_HAS_INTERRUPT
     irq_setmask(0);
     irq_setie(1);
 #endif
     uart_init();
 
-    printf("Hellorld!\n");
-    help();
-    prompt();
+// Inicializa timer0 se presente
+#ifdef CSR_TIMER0_BASE
+    timer0_en_write(0);
+    timer0_reload_write(0);
+    timer0_load_write(CONFIG_CLOCK_FREQUENCY / 1000000); // Configura para contar microssegundos
+    timer0_en_write(1);
+    timer0_update_value_write(1);
+#endif
 
-    while(1) {
-        console_service();
+    busy_wait_ms(500);
+
+    printf("\n---------------- LiteX BIOS --------------\n");
+    printf(  "Tarefa 05 – Transmissão de dados via LoRa \n");
+
+    // Inicializa I2C
+    i2c_init();
+
+    // Inicializa o sensor AHT10
+    aht10_init();
+
+    // Inicializa LoRa usando a biblioteca
+    if (!lora_init()) {
+        printf("FALHA CRÍTICA: Inicialização do LoRa falhou.\n");
+         while(1);
     }
 
-    return 0;
-
-    // Inicializa IRQ e UART para console
-    irq_setmask(0);
-    irq_setie(1);
-    uart_init();
-
-    printf("--- FPGA LoRa Transmitter (mock AHT10) ---\n");
-
-    // Inicializa o módulo LoRa RFM9X via SPI do LiteX (CSR prefixo: lora_*)
-    printf("Initializing LoRa RFM9X... ");
-    if (!rfm9x_init(LORA_FREQUENCY)) {
-        printf("FAILED (check SPI/pins)\n");
-        return -1;
-    }
-    printf("OK\n");
-
-    uint32_t count = 0;
     while (1) {
-        // Mock de leitura de sensores
-        float temp_c = 0.0f, hum = 0.0f;
-        mock_read_temp_hum(&temp_c, &hum, count);
-
-        // Formato ASCII simples: T=xx.xx;H=yy.yy\n
-        char payload[64];
-        int n = snprintf(payload, sizeof(payload), "T=%.2f;H=%.2f\n", (double)temp_c, (double)hum);
-        if (n < 0) n = 0; if (n > (int)sizeof(payload)) n = sizeof(payload);
-
-        // Envia via LoRa
-        rfm9x_send_packet((uint8_t*)payload, (uint8_t)n);
-        printf("TX #%lu: %s", (unsigned long)(++count), payload);
-
-        // Periodicidade de 10s
-        sleep_ms(10000);
+        send_sensor_data();
+        busy_wait_ms(10000);
     }
 
     return 0;
 }
+
+// int main(void) {
+// #ifdef CONFIG_CPU_HAS_INTERRUPT
+//     irq_setmask(0);
+//     irq_setie(1);
+// #endif
+//     uart_init();
+    
+// // Inicializa timer0 se presente
+// #ifdef CSR_TIMER0_BASE
+//     timer0_en_write(0);
+//     timer0_reload_write(0);
+//     timer0_load_write(CONFIG_CLOCK_FREQUENCY / 1000000); // Configura para contar microssegundos
+//     timer0_en_write(1);
+//     timer0_update_value_write(1);
+// #endif
+
+//     busy_wait_ms(500);
+
+//     printf("Hello World!\n");
+//     help();
+//     prompt();
+
+//     // Inicializa IRQ e UART para console
+//     irq_setmask(0);
+//     irq_setie(1);
+//     uart_init();
+
+//     printf("--- FPGA LoRa Transmitter (mock AHT10) ---\n");
+
+//     // Inicializa o módulo LoRa RFM9X via SPI do LiteX (CSR prefixo: lora_*)
+//     printf("Initializing LoRa RFM9X... ");
+//     if (!rfm9x_init(LORA_FREQUENCY)) {
+//         printf("FAILED (check SPI/pins)\n");
+//         return -1;
+//     }
+//     printf("OK\n");
+
+//     uint32_t count = 0;
+//     while (1) {
+//         // Mock de leitura de sensores
+//         float temp_c = 0.0f, hum = 0.0f;
+//         mock_read_temp_hum(&temp_c, &hum, count);
+
+//         // Formato ASCII simples: T=xx.xx;H=yy.yy\n
+//         char payload[64];
+//         int n = snprintf(payload, sizeof(payload), "T=%.2f;H=%.2f\n", (double)temp_c, (double)hum);
+//         if (n < 0) n = 0; if (n > (int)sizeof(payload)) n = sizeof(payload);
+
+//         // Envia via LoRa
+//         rfm9x_send_packet((uint8_t*)payload, (uint8_t)n);
+//         printf("TX #%lu: %s", (unsigned long)(++count), payload);
+
+//         // Periodicidade de 10s
+//         sleep_ms(10000);
+//     }
+
+//     return 0;
+// }

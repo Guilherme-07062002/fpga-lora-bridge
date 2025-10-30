@@ -1,55 +1,53 @@
-#ifndef __AHT10_H
-#define __AHT10_H
+#ifndef AHT10_H_
+#define AHT10_H_
 
-#include <stdbool.h>
 #include <stdint.h>
+#include <stdbool.h>
 
-// Endereço I2C do AHT10
-#define AHT10_I2C_ADDR 0x38
+// ============================================
+// === Struct de Dados ===
+// ============================================
+/**
+ * @brief Estrutura para armazenar dados do sensor.
+ * Valores são multiplicados por 100 para evitar ponto flutuante.
+ */
+typedef struct {
+    int16_t temperatura; // Temperatura * 100
+    int16_t umidade;     // Umidade * 100
+} dados;
 
-// Comandos do AHT10
-#define AHT10_CMD_INIT 0xE1
-#define AHT10_CMD_TRIGGER 0xAC
-#define AHT10_STATUS_BUSY 0x80
-#define AHT10_STATUS_CALIBRATED 0x08
+
+// ============================================
+// === Protótipos Públicos ===
+// ============================================
+
+/**
+ * @brief Inicializa o driver I2C bitbang.
+ * Deve ser chamada antes de qualquer outra função I2C ou AHT10.
+ */
+void i2c_init(void);
+
+/**
+ * @brief Varre o barramento I2C e imprime endereços de dispositivos encontrados.
+ */
+void i2c_scan(void);
 
 /**
  * @brief Inicializa o sensor AHT10.
- * 
- * @return true se a inicialização foi bem-sucedida, false caso contrário.
+ * @return 0 em sucesso, -1 em falha.
  */
-bool aht10_init(void);
+int aht10_init(void);
 
 /**
- * @brief Solicita uma leitura de temperatura e umidade.
- * 
- * @return true se o comando foi enviado com sucesso, false caso contrário.
+ * @brief Lê o sensor AHT10 e imprime os valores formatados (Debug).
  */
-bool aht10_trigger_measurement(void);
+void aht10_read(void);
 
 /**
- * @brief Lê os dados brutos de temperatura e umidade do sensor.
- * 
- * @param raw_h O ponteiro para armazenar o dado bruto de umidade.
- * @param raw_t O ponteiro para armazenar o dado bruto de temperatura.
- * @return true se a leitura foi bem-sucedida, false caso contrário.
+ * @brief Obtém os dados de temperatura e umidade do AHT10.
+ * @param d Ponteiro para a struct 'dados' onde os resultados serão armazenados.
+ * @return true em sucesso, false em falha.
  */
-bool aht10_read_raw_data(uint32_t *raw_h, uint32_t *raw_t);
+bool aht10_get_data(dados *d);
 
-/**
- * @brief Converte o dado bruto de umidade para umidade relativa (%).
- * 
- * @param raw_h O dado bruto de umidade.
- * @return float O valor da umidade em %.
- */
-float aht10_calculate_humidity(uint32_t raw_h);
-
-/**
- * @brief Converte o dado bruto de temperatura para graus Celsius.
- * 
- * @param raw_t O dado bruto de temperatura.
- * @return float O valor da temperatura em °C.
- */
-float aht10_calculate_temperature(uint32_t raw_t);
-
-#endif // __AHT10_H
+#endif // AHT10_H_
