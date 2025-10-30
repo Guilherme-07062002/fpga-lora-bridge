@@ -25,23 +25,23 @@ typedef struct {
 
 /**
  * @brief Inicializa o módulo LoRa com as configurações fornecidas.
- * * @param config A struct com as configurações de pinos, SPI e frequência.
+ * @param config Estrutura com configuração de pinos, SPI e frequência.
  * @return true se a inicialização foi bem-sucedida, false caso contrário.
  */
 bool lora_init(lora_config_t config);
 
 /**
  * @brief Envia uma mensagem de texto via LoRa.
- * * @param msg A mensagem a ser enviada (string terminada em nulo).
+ * @param msg Mensagem a ser enviada (string terminada em nulo).
  * @return true se o envio foi iniciado com sucesso, false em caso de erro.
  */
 bool lora_send(const char *msg);
 
 /**
- * @brief Tenta receber uma mensagem LoRa. Função não bloqueante.
- * * @param buf Buffer para armazenar a mensagem recebida.
+ * @brief Tenta receber uma mensagem LoRa (não bloqueante).
+ * @param buf Buffer para armazenar a mensagem recebida.
  * @param maxlen Tamanho máximo do buffer.
- * @return O número de bytes recebidos, ou 0 se nenhum pacote foi recebido.
+ * @return Número de bytes recebidos, ou 0 se nenhum pacote foi recebido.
  */
 int lora_receive(char *buf, size_t maxlen);
 
@@ -68,8 +68,8 @@ int lora_receive_bytes(uint8_t *buf, size_t maxlen);
 
 /**
  * @brief Obtém o RSSI (Received Signal Strength Indication) do último pacote recebido.
- * @return O valor do RSSI em dBm.
+ * @return Valor do RSSI em dBm.
  */
-int lora_get_rssi(void); // <<< ADICIONE ESTA LINHA
+int lora_get_rssi(void);
 
 #endif // LORA_RFM95_H_

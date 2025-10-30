@@ -8,12 +8,12 @@
 #include "hardware/i2c.h"
 #include "lora_rfm95.h"
 
-// ==========================================================
-// ===         PINAGEM E CONFIGURAÇÕES GLOBAIS            ===
-// ==========================================================
+// -----------------------------
+// PINAGEM E CONFIGURAÇÕES GLOBAIS
+// -----------------------------
 
-// Mapeamento dos pinos do rádio LoRa para o Raspberry Pi Pico.
-// Certifique-se de que estes pinos correspondem à sua fiação.
+// Mapeamento dos pinos do módulo LoRa para o Raspberry Pi Pico.
+// Verifique se os pinos abaixo correspondem à sua fiação antes de usar.
 #define PIN_MISO 16
 #define PIN_CS   17
 #define PIN_SCK  18
@@ -21,17 +21,17 @@
 #define PIN_RST  20
 #define PIN_DIO0 8  // Pino de interrupção (essencial para a biblioteca)
 
-// Frequência de operação em Hz.
-// ATENÇÃO: Use a frequência correta para sua região!
-// 915E6 para Américas (US915)
-// 868E6 para Europa (EU868)
-// 433E6 para Ásia (AS433)
+// Frequência de operação (Hz).
+// ATENÇÃO: use a frequência correta para a sua região:
+// - 915E6 para Américas (US915)
+// - 868E6 para Europa (EU868)
+// - 433E6 para Ásia (AS433)
 #define LORA_FREQUENCY 915E6
 
-// Intervalo entre os envios em milissegundos
-#define SEND_INTERVAL_MS 10000 // 10 segundos
+// Intervalo entre envios (milissegundos)
+#define SEND_INTERVAL_MS 10000 // 10 000 ms = 10 segundos
 
-// Estrutura de dados para recepção
+// Estrutura de dados para recepção de sensores via rádio
 typedef struct {
     int16_t temperatura;
 	int16_t umidade;
@@ -62,7 +62,7 @@ bool repeating_timer_callback(struct repeating_timer *t) {
 
 }
 
-// imagem de backgroud para tarefa
+// Imagem de background usada na tela (exibição inicial)
 void func_backgoud()
 {
 
@@ -145,7 +145,7 @@ void func_backgoud()
 	ssd1306_WriteString("dados", Font_16x15, White);
 	ssd1306_UpdateScreen();
 
-	// Ativa o timer (200 ms)
+	// Ativa o timer com período de 200 ms
     add_repeating_timer_ms(200, repeating_timer_callback, NULL, &timer);
 
 
@@ -159,9 +159,9 @@ void func_backgoud()
     ssd1306_Init();
 
 	ssd1306_Fill(Black);
-    // 1. Configurar o rádio LoRa
+	// 1) Configurar o rádio LoRa
     lora_config_t lora_cfg = {
-        .spi_instance = spi0, // Usando a interface SPI0
+	.spi_instance = spi0, // Usando a interface SPI0
         .pin_miso = PIN_MISO,
         .pin_cs = PIN_CS,
         .pin_sck = PIN_SCK,
@@ -172,7 +172,7 @@ void func_backgoud()
     };
 
 
-	// 2. Inicializar o módulo LoRa
+	// 2) Inicializar o módulo LoRa
     printf("Inicializando o modulo LoRa na frequencia %.0f Hz...\n", (float)LORA_FREQUENCY);
 	ssd1306_SetCursor( 7, 0 + 6);
     ssd1306_WriteString("Inic LoRa na freq:", Font_6x8, White);
@@ -193,7 +193,7 @@ void func_backgoud()
 		ssd1306_WriteString("ERRO - mod LoRa.", Font_6x8, White);
 		ssd1306_UpdateScreen();
 		
-        // Trava a execução se a inicialização falhar
+		// Bloqueia a execução caso a inicialização falhe
         while (1);
     }
     printf("[SUCESSO] Modulo LoRa inicializado com sucesso!\n\n");
@@ -205,7 +205,8 @@ void func_backgoud()
 	ssd1306_Fill(Black);
 	ssd1306_UpdateScreen();
 
-	// 3. Coloca o rádio no modo RX contínuo (MODE_RX_CONTINUOUS = 0x05), permitindo que ele fique sempre escutando o canal até receber um pacote
+	// 3) Coloca o rádio em modo RX contínuo (MODE_RX_CONTINUOUS = 0x05).
+	//    Neste modo o rádio permanece escutando o canal até receber um pacote.
 	lora_start_rx_continuous();
 
  }

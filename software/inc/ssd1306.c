@@ -14,10 +14,10 @@ const uint8_t I2C_SDA_PIN = 14;
 const uint8_t I2C_SCL_PIN = 15;
 
 void ssd1306_Reset(void) {
-    /* for I2C - do nothing */
+    /* Para I2C: não é necessário reset por software */
 }
 
-// Send a byte to the command register
+// Envia um byte para o registrador de comando
 void ssd1306_WriteCommand(uint8_t byte) {
     uint8_t buffer[2];           // Buffer contendo o registrador e o dado
     buffer[0] = 0x00;            // Endereço do registrador
@@ -26,11 +26,11 @@ void ssd1306_WriteCommand(uint8_t byte) {
     i2c_write_blocking(SSD1306_I2C_PORT, SSD1306_I2C_ADDR, buffer, sizeof(buffer), false);
 }
 
-// Send data
+// Envia dados (payload) via I2C
 void ssd1306_WriteData(uint8_t* buffer, size_t buff_size) {
-    uint8_t temp_buffer[buff_size + 1]; // Buffer temporário
-    temp_buffer[0] = 0x40;             // Endereço do registrador (Control byte)
-    memcpy(&temp_buffer[1], buffer, buff_size); // Copia os dados para o buffer temporário
+    uint8_t temp_buffer[buff_size + 1]; // buffer temporário para I2C
+    temp_buffer[0] = 0x40;              // Control byte (endereço de dados)
+    memcpy(&temp_buffer[1], buffer, buff_size); // copia payload para o buffer
 
     i2c_write_blocking(SSD1306_I2C_PORT, SSD1306_I2C_ADDR, temp_buffer, sizeof(temp_buffer), false);
 }
@@ -40,13 +40,13 @@ void ssd1306_WriteData(uint8_t* buffer, size_t buff_size) {
 #endif
 
 
-// Screenbuffer
+// Buffer de vídeo (screenbuffer)
 static uint8_t SSD1306_Buffer[SSD1306_BUFFER_SIZE];
 
 // Screen object
 static SSD1306_t SSD1306;
 
-/* Fills the Screenbuffer with values from a given buffer of a fixed length */
+/* Preenche o buffer de vídeo com valores vindos de um buffer fornecido */
 SSD1306_Error_t ssd1306_FillBuffer(uint8_t* buf, uint32_t len) {
     SSD1306_Error_t ret = SSD1306_ERR;
     if (len <= SSD1306_BUFFER_SIZE) {
@@ -56,86 +56,84 @@ SSD1306_Error_t ssd1306_FillBuffer(uint8_t* buf, uint32_t len) {
     return ret;
 }
 
-/* Initialize the oled screen */
+/* Inicializa a tela OLED */
 void ssd1306_Init(void) {
-    // Reset OLED
+    // Reinicia o display (se aplicável)
     ssd1306_Reset();
 
-    // Wait for the screen to boot
+    // Aguarda boot do display
     sleep_ms(100);
 
-    // I2C is "open drain", pull ups to keep signal high when no data is being
-    // sent
+    // I2C é open-drain; habilita pull-ups para manter linhas em nível alto quando o barramento estiver ocioso
     i2c_init(i2c1, SSD1306_I2C_CLK * 1000);
     gpio_set_function(I2C_SDA_PIN, GPIO_FUNC_I2C);
     gpio_set_function(I2C_SCL_PIN, GPIO_FUNC_I2C);
     gpio_pull_up(I2C_SDA_PIN);
     gpio_pull_up(I2C_SCL_PIN);
 
-    // Init OLED
-    ssd1306_SetDisplayOn(0); //display off
+    // Inicializa configuração básica do OLED
+    ssd1306_SetDisplayOn(0); // display OFF
 
-    ssd1306_WriteCommand(0x20); //Set Memory Addressing Mode
-    ssd1306_WriteCommand(0x00); // 00b,Horizontal Addressing Mode; 01b,Vertical Addressing Mode;
-                                // 10b,Page Addressing Mode (RESET); 11b,Invalid
+    ssd1306_WriteCommand(0x20); // Define modo de endereçamento de memória
+    ssd1306_WriteCommand(0x00); // 00b: Horizontal; 01b: Vertical; 10b: Page (RESET); 11b: inválido
 
-    ssd1306_WriteCommand(0xB0); //Set Page Start Address for Page Addressing Mode,0-7
+    ssd1306_WriteCommand(0xB0); // Define endereço inicial da página (Page Addressing Mode)
 
 #ifdef SSD1306_MIRROR_VERT
-    ssd1306_WriteCommand(0xC0); // Mirror vertically
+    ssd1306_WriteCommand(0xC0); // Espelho vertical
 #else
-    ssd1306_WriteCommand(0xC8); //Set COM Output Scan Direction
+    ssd1306_WriteCommand(0xC8); // Define direção do scan das saídas COM
 #endif
 
-    ssd1306_WriteCommand(0x00); //---set low column address
-    ssd1306_WriteCommand(0x10); //---set high column address
+    ssd1306_WriteCommand(0x00); // Define endereço de coluna baixo
+    ssd1306_WriteCommand(0x10); // Define endereço de coluna alto
 
-    ssd1306_WriteCommand(0x40); //--set start line address - CHECK
+    ssd1306_WriteCommand(0x40); // Define linha inicial (start line)
 
     ssd1306_SetContrast(0xFF);
 
 #ifdef SSD1306_MIRROR_HORIZ
-    ssd1306_WriteCommand(0xA0); // Mirror horizontally
+    ssd1306_WriteCommand(0xA0); // Espelho horizontal
 #else
-    ssd1306_WriteCommand(0xA1); //--set segment re-map 0 to 127 - CHECK
+    ssd1306_WriteCommand(0xA1); // Remapeia segmentos (0 a 127)
 #endif
 
 #ifdef SSD1306_INVERSE_COLOR
-    ssd1306_WriteCommand(0xA7); //--set inverse color
+    ssd1306_WriteCommand(0xA7); // Ativa inversão de cor
 #else
-    ssd1306_WriteCommand(0xA6); //--set normal color
+    ssd1306_WriteCommand(0xA6); // Modo de cor normal
 #endif
 
-// Set multiplex ratio.
+// Ajuste do multiplex ratio
 #if (SSD1306_HEIGHT == 128)
-    // Found in the Luma Python lib for SH1106.
+    // Valor observado em implementações para SH1106
     ssd1306_WriteCommand(0xFF);
 #else
-    ssd1306_WriteCommand(0xA8); //--set multiplex ratio(1 to 64) - CHECK
+    ssd1306_WriteCommand(0xA8); // Define multiplex ratio (1..64)
 #endif
 
 #if (SSD1306_HEIGHT == 32)
-    ssd1306_WriteCommand(0x1F); //
+    ssd1306_WriteCommand(0x1F);
 #elif (SSD1306_HEIGHT == 64)
-    ssd1306_WriteCommand(0x3F); //
+    ssd1306_WriteCommand(0x3F);
 #elif (SSD1306_HEIGHT == 128)
-    ssd1306_WriteCommand(0x3F); // Seems to work for 128px high displays too.
+    ssd1306_WriteCommand(0x3F); // Também funciona para displays de 128px
 #else
-#error "Only 32, 64, or 128 lines of height are supported!"
+#error "Apenas alturas 32, 64 ou 128 são suportadas!"
 #endif
 
-    ssd1306_WriteCommand(0xA4); //0xa4,Output follows RAM content;0xa5,Output ignores RAM content
+    ssd1306_WriteCommand(0xA4); // Output segue o conteúdo da RAM
 
-    ssd1306_WriteCommand(0xD3); //-set display offset - CHECK
-    ssd1306_WriteCommand(0x00); //-not offset
+    ssd1306_WriteCommand(0xD3); // Define display offset
+    ssd1306_WriteCommand(0x00); // Offset = 0
 
-    ssd1306_WriteCommand(0xD5); //--set display clock divide ratio/oscillator frequency
-    ssd1306_WriteCommand(0xF0); //--set divide ratio
+    ssd1306_WriteCommand(0xD5); // Define clock/oscillator
+    ssd1306_WriteCommand(0xF0); // Define ratio
 
-    ssd1306_WriteCommand(0xD9); //--set pre-charge period
-    ssd1306_WriteCommand(0x22); //
+    ssd1306_WriteCommand(0xD9); // Define pre-charge period
+    ssd1306_WriteCommand(0x22);
 
-    ssd1306_WriteCommand(0xDA); //--set com pins hardware configuration - CHECK
+    ssd1306_WriteCommand(0xDA); // Configuração de pinos COM
 #if (SSD1306_HEIGHT == 32)
     ssd1306_WriteCommand(0x02);
 #elif (SSD1306_HEIGHT == 64)
@@ -143,23 +141,23 @@ void ssd1306_Init(void) {
 #elif (SSD1306_HEIGHT == 128)
     ssd1306_WriteCommand(0x12);
 #else
-#error "Only 32, 64, or 128 lines of height are supported!"
+#error "Apenas alturas 32, 64 ou 128 são suportadas!"
 #endif
 
-    ssd1306_WriteCommand(0xDB); //--set vcomh
-    ssd1306_WriteCommand(0x20); //0x20,0.77xVcc
+    ssd1306_WriteCommand(0xDB); // Define VCOMH
+    ssd1306_WriteCommand(0x20); // 0x20 ~= 0.77 * Vcc
 
-    ssd1306_WriteCommand(0x8D); //--set DC-DC enable
-    ssd1306_WriteCommand(0x14); //
-    ssd1306_SetDisplayOn(1); //--turn on SSD1306 panel
+    ssd1306_WriteCommand(0x8D); // Habilita DC-DC
+    ssd1306_WriteCommand(0x14);
+    ssd1306_SetDisplayOn(1); // Liga o painel SSD1306
 
-    // Clear screen
+    // Limpa tela
     ssd1306_Fill(Black);
     
-    // Flush buffer to screen
+    // Envia buffer para o display
     ssd1306_UpdateScreen();
     
-    // Set default values for screen object
+    // Valores padrão do objeto de tela
     SSD1306.CurrentX = 0;
     SSD1306.CurrentY = 0;
     
@@ -173,16 +171,15 @@ void ssd1306_Fill(SSD1306_COLOR color) {
 
 /* Write the screenbuffer with changed to the screen */
 void ssd1306_UpdateScreen(void) {
-    // Write data to each page of RAM. Number of pages
-    // depends on the screen height:
-    //
-    //  * 32px   ==  4 pages
-    //  * 64px   ==  8 pages
-    //  * 128px  ==  16 pages
+    // Envia dados para cada página da RAM. O número de páginas
+    // depende da altura do display:
+    //  * 32px   ==  4 páginas
+    //  * 64px   ==  8 páginas
+    //  * 128px  ==  16 páginas
     for(uint8_t i = 0; i < SSD1306_HEIGHT/8; i++) {
-        ssd1306_WriteCommand(0xB0 + i); // Set the current RAM page address.
-        ssd1306_WriteCommand(0x00 + SSD1306_X_OFFSET_LOWER);
-        ssd1306_WriteCommand(0x10 + SSD1306_X_OFFSET_UPPER);
+    ssd1306_WriteCommand(0xB0 + i); // Define página RAM atual
+    ssd1306_WriteCommand(0x00 + SSD1306_X_OFFSET_LOWER); // coluna baixa
+    ssd1306_WriteCommand(0x10 + SSD1306_X_OFFSET_UPPER); // coluna alta
         ssd1306_WriteData(&SSD1306_Buffer[SSD1306_WIDTH*i],SSD1306_WIDTH);
     }
 }
@@ -195,11 +192,11 @@ void ssd1306_UpdateScreen(void) {
  */
 void ssd1306_DrawPixel(uint8_t x, uint8_t y, SSD1306_COLOR color) {
     if(x >= SSD1306_WIDTH || y >= SSD1306_HEIGHT) {
-        // Don't write outside the buffer
+            // Não escrever fora do buffer
         return;
     }
    
-    // Draw in the right color
+    // Desenha na cor solicitada
     if(color == White) {
         SSD1306_Buffer[x + (y / 8) * SSD1306_WIDTH] |= 1 << (y % 8);
     } else { 
@@ -208,27 +205,27 @@ void ssd1306_DrawPixel(uint8_t x, uint8_t y, SSD1306_COLOR color) {
 }
 
 /*
- * Draw 1 char to the screen buffer
- * ch       => char om weg te schrijven
- * Font     => Font waarmee we gaan schrijven
- * color    => Black or White
+/* Escreve 1 caractere no buffer de tela
+ * ch    => caractere a escrever
+ * Font  => fonte utilizada
+ * color => Black ou White
  */
 char ssd1306_WriteChar(char ch, SSD1306_Font_t Font, SSD1306_COLOR color) {
     uint32_t i, b, j;
     
-    // Check if character is valid
+    // Verifica se o caractere é válido
     if (ch < 32 || ch > 126)
         return 0;
     
-    // Check remaining space on current line
+    // Verifica espaço restante na linha atual
     if (SSD1306_WIDTH < (SSD1306.CurrentX + Font.width) ||
         SSD1306_HEIGHT < (SSD1306.CurrentY + Font.height))
     {
-        // Not enough space on current line
+        // Não há espaço suficiente na linha atual
         return 0;
     }
     
-    // Use the font to write
+    // Usa a fonte para desenhar o caractere
     for(i = 0; i < Font.height; i++) {
         b = Font.data[(ch - 32) * Font.height + i];
         for(j = 0; j < Font.width; j++) {
@@ -240,18 +237,18 @@ char ssd1306_WriteChar(char ch, SSD1306_Font_t Font, SSD1306_COLOR color) {
         }
     }
     
-    // The current space is now taken
+    // Atualiza posição X após escrever o caractere
     SSD1306.CurrentX += Font.char_width ? Font.char_width[ch - 32] : Font.width;
     
     // Return written char for validation
     return ch;
 }
 
-/* Write full string to screenbuffer */
+/* Escreve uma string completa no buffer de tela */
 char ssd1306_WriteString(char* str, SSD1306_Font_t Font, SSD1306_COLOR color) {
     while (*str) {
         if (ssd1306_WriteChar(*str, Font, color) != *str) {
-            // Char could not be written
+            // Não foi possível escrever o caractere
             return *str;
         }
         str++;

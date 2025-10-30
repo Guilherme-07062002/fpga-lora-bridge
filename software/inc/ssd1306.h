@@ -31,12 +31,12 @@ _BEGIN_STD_C
 
 /* ^^^ I2C config ^^^ */
 
-// SSD1306 OLED height in pixels
+#// Altura do display SSD1306 em pixels
 #ifndef SSD1306_HEIGHT
 #define SSD1306_HEIGHT          64
 #endif
 
-// SSD1306 width in pixels
+#// Largura do display SSD1306 em pixels
 #ifndef SSD1306_WIDTH
 #define SSD1306_WIDTH           128
 #endif
@@ -45,10 +45,10 @@ _BEGIN_STD_C
 #define SSD1306_BUFFER_SIZE   SSD1306_WIDTH * SSD1306_HEIGHT / 8
 #endif
 
-// Enumeration for screen colors
+// Enumeração de cores do display
 typedef enum {
-    Black = 0x00, // Black color, no pixel
-    White = 0x01  // Pixel is set. Color depends on OLED
+    Black = 0x00, // Cor preta, pixel apagado
+    White = 0x01  // Pixel definido (cor depende do OLED)
 } SSD1306_COLOR;
 
 typedef enum {
@@ -56,7 +56,7 @@ typedef enum {
     SSD1306_ERR = 0x01  // Generic error.
 } SSD1306_Error_t;
 
-// Struct to store transformations
+// Estrutura que armazena o estado/transformações do cursor
 typedef struct {
     uint16_t CurrentX;
     uint16_t CurrentY;
@@ -69,7 +69,7 @@ typedef struct {
     uint8_t y;
 } SSD1306_VERTEX;
 
-/** Font */
+/** Fonte */
 typedef struct {
 	const uint8_t width;                /**< Font width in pixels */
 	const uint8_t height;               /**< Font height in pixels */
@@ -77,7 +77,7 @@ typedef struct {
     const uint8_t *const char_width;    /**< Proportional character width in pixels (NULL for monospaced) */
 } SSD1306_Font_t;
 
-// Procedure definitions
+// Declarações de funções
 void ssd1306_Init(void);
 void ssd1306_Fill(SSD1306_COLOR color);
 void ssd1306_UpdateScreen(void);
