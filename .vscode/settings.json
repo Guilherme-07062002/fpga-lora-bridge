@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "soc.h": "c"
+        "soc.h": "c",
+        "csr.h": "c"
     }
 }

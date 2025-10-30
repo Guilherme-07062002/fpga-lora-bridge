@@ -209,57 +209,57 @@ void func_backgoud()
 	lora_start_rx_continuous();
 
  }
- // função responsavel por atualizar o display
+// função responsavel por atualizar o display
 #include <stdlib.h>
 #include <math.h>
 
+// Normaliza valores vindos do rádio. Dependendo do firmware do TX, o
+// valor pode vir em diferentes escalas (ex: 22 -> 22.0, 220 -> 22.0, 2200 -> 22.00).
+// Esta heurística trata os casos mais comuns sem precisar mudar o protocolo.
+static float normalize_sensor_value(float v){
+	float av = fabsf(v);
+	if(av > 1000.0f) return v / 100.0f; // ex: 2200 -> 22.00
+	if(av > 100.0f)  return v / 10.0f;  // ex: 220 -> 22.0
+	return v;                           // já está em unidade real
+}
+
 void imprimedisplay(float temp, float umid) {
+	// aplica normalização defensiva
+	float t = normalize_sensor_value(temp);
+	float h = normalize_sensor_value(umid);
 
-    // --- SEPARA A PARTE INTEIRA E FRACIONÁRIA ---
-    int temp_int = (int)temp;                              // parte inteira
-    int temp_frac = (int)((fabsf(temp) - abs(temp_int)) * 100 + 0.5f); // duas casas decimais (com arredondamento)
+	// mostra layout mais simples e legível: uma linha grande para temperatura
+	// e outra para umidade, com unidades explícitas.
+	char buf_t[16];
+	char buf_h[16];
 
-    int umid_int = (int)umid;
-    int umid_frac = (int)((fabsf(umid) - abs(umid_int)) * 100 + 0.5f);
+	// Formata com uma casa decimal (ex: 22.0) ou sem fração quando inteiro
+	if(fabsf(t - roundf(t)) < 0.05f)
+		snprintf(buf_t, sizeof(buf_t), "%d C", (int)roundf(t));
+	else
+		snprintf(buf_t, sizeof(buf_t), "%.1f C", t);
 
-    // --- BUFFERS PARA CONVERSÃO EM STRING ---
-    char temp_i[5], temp_f[3];
-    char umid_i[5], umid_f[3];
+	if(fabsf(h - roundf(h)) < 0.05f)
+		snprintf(buf_h, sizeof(buf_h), "%d %%", (int)roundf(h));
+	else
+		snprintf(buf_h, sizeof(buf_h), "%.1f %%", h);
 
-    sprintf(temp_i, "%d", temp_int);
-    sprintf(temp_f, "%02d", temp_frac);  // sempre 2 dígitos (ex: “05”)
-    sprintf(umid_i, "%d", umid_int);
-    sprintf(umid_f, "%02d", umid_frac);
+	// redraw
+	ssd1306_Fill(Black);
 
-    // --- LIMPA E DESENHA ---
-    ssd1306_FillRectangle(0+4, 0+6, 60 - 4, 0 + 16, White);
-    ssd1306_SetCursor(7, 8);
-    ssd1306_WriteString("Temp. C", Font_6x8, Black);
+	// Temperatura: texto grande no centro superior
+	ssd1306_SetCursor(8, 6);
+	ssd1306_WriteString("Temperatura:", Font_7x10, White);
+	ssd1306_SetCursor(10, 22);
+	ssd1306_WriteString(buf_t, Font_16x26, White);
 
-    ssd1306_FillRectangle(64+4, 0+6, 127 - 4, 0 + 16, White);
-    ssd1306_SetCursor(70, 8);
-    ssd1306_WriteString("Umidade %%", Font_6x8, Black);
+	// Umidade: inferior
+	ssd1306_SetCursor(8, 46);
+	ssd1306_WriteString("Umidade:", Font_7x10, White);
+	ssd1306_SetCursor(88, 42);
+	ssd1306_WriteString(buf_h, Font_11x18, White);
 
-    // --- TEMPERATURA ---
-    ssd1306_SetCursor(24, 23);
-    ssd1306_WriteString(temp_i, Font_16x24, White);
-	ssd1306_SetCursor(32, 46);
-    ssd1306_WriteString(",", Font_16x15, White);
-    ssd1306_WriteString(temp_f, Font_16x15, White);
-
-    // --- UMIDADE ---
-    ssd1306_SetCursor(29 + 63, 23);
-    ssd1306_WriteString(umid_i, Font_16x24, White);
-	ssd1306_SetCursor(34 + 63, 46);
-    ssd1306_WriteString(",", Font_16x15, White);
-    ssd1306_WriteString(umid_f, Font_16x15, White);
-
-    // --- CAIXAS E FUNDO ---
-    ssd1306_DrawRectangle(64, 0, 127, 63, White);
-    ssd1306_DrawRectangle(0, 0, 60, 63, White);
-
-    func_backgoud();
-    ssd1306_UpdateScreen();
+	ssd1306_UpdateScreen();
 }
 
  
