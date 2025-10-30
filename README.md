@@ -1,64 +1,118 @@
 # FPGA LoRa Bridge (Tarefa 05)
 
 Este projeto implementa uma ponte de telemetria via LoRa usando:
-- FPGA ColorLight i9 rodando um SoC LiteX/VexRiscv (nó transmissor)
-- BitDogLab (RP2040) como nó receptor com OLED SSD1306
+- FPGA ColorLight i5 rodando um SoC LiteX/VexRiscv (nó transmissor)
+- BitDogLab como nó receptor com display OLED SSD1306
 
-O transmissor lê temperatura/umidade do AHT10 (I2C) e envia periodicamente via LoRa (RFM96/SX1276). O receptor exibe no OLED.
+O transmissor lê temperatura/umidade do AHT10 (I2C) e envia periodicamente via LoRa RFM96. O receptor exibe os dados no display OLED.
 
 ## Estrutura
+
 - hardware/
-  - ip/colorlight_i5.py: script de SoC (LiteX) com flags `--with-lora`, `--with-aht10`, `--use-example-pins`.
-  - ip/pins_colorlight_i9_ext.py: TEMPLATE de mapeamento de pinos (edite para a sua placa).
-  - ip/firmware_lora.c: firmware bare-metal (scaffolding) para TX (AHT10 + LoRa via CSRs).
+  - Código do SoC LiteX com IPs I2C e LoRa.
 - software/ (BitDogLab receptor)
-  - include/lora_pins.h: pinos do IDC central (ajuste conforme sua fiação).
-  - include/lora_rfm96.h, src/lora_rfm96.c: driver mínimo do RFM96 (RX contínuo).
-  - include/ssd1306.h, src/ssd1306.c: driver OLED (usa `include/font.h`).
-  - software.c: app receptor (inicializa OLED + LoRa e mostra T/H recebidos).
+  - Firmware para RP2040 que recebe dados LoRa e exibe no OLED.
 
-## Pinos
-- LoRa (FPGA): selecione um conector IDC de 14 pinos (CN2–CN5). Sinais mínimos: SCK, MOSI, MISO, CS (NSS). Opcional: RESET, DIO0.
-- I2C (FPGA): escolha um JST de 4 pinos para SCL/SDA (3V3/GND pelo conector).
-- LoRa (BitDogLab): por padrão usa SPI0 do RP2040 (SCK=18, MOSI=19, MISO=16, CS=17, DIO0=20, RST=21). Edite `software/include/lora_pins.h`.
 
-> Importante: ajuste `hardware/ip/pins_colorlight_i9_ext.py` para os pinos reais da sua placa (a síntese falhará se não corresponder).
+## Como Compilar e Executar
 
-## Build/execução
-### Simulação rápida (sem toolchain FPGA)
-- Acelerador demo: `make -C hardware sim`
-- Testbench RTL: `make -C hardware tb`
+### Hardware (FPGA ColorLight i5)
 
-### FPGA (SoC LiteX)
-1) Ajuste os pinos em `hardware/ip/pins_colorlight_i9_ext.py`.
-2) Gere o bitstream com LoRa/I2C:
+### 1. Preparar o ambiente OSS CAD SUITE
 
+É recomendado utilizar um ambiente virtual Python.
+
+Baixe o oss-cad-suite de acordo com a release compatível com seu sistema operacional em:
+
+[https://github.com/YosysHQ/oss-cad-suite-build/releases](https://github.com/YosysHQ/oss-cad-suite-build/releases)
+
+Insira o arquivo compactado oss-cad-suite do baixado em `/tools` e realize a extração do conteúdo na mesma pasta.
+
+Ou então para baixar por linha de comando:
+
+```sh
+# Acesse o diretório tools
+cd tools
+
+# Baixe a versão mais recente do oss-cad-suite (verifique a página de releases para a versão mais atual)
+wget https://github.com/YosysHQ/oss-cad-suite-build/releases/download/2025-10-08/oss-cad-suite-linux-x64-20251008.tgz
+
+# Ainda na mesma pasta, extraia o conteúdo do arquivo baixado
+tar -xvzf oss-cad-suite-linux-x64-20251008.tgz
 ```
-make -C hardware lora-soc
+
+### 2. Acionar o ambiente do OSS CAD SUITE e Gere o SoC com LiteX
+
+```sh
+# Retorne ao diretório raiz do projeto
+cd ..
+
+# Acionar o ambiente do OSS CAD SUITE
+source tools/oss-cad-suite/environment
+
+# Busque o caminho do python3
+which python3
+
+# Gerar o SoC
+caminho_do_python3 ./ip/colorlight_i5.py --board i9 --revision 7.2 --build --cpu-type=picorv32  --ecppack-compress
 ```
 
-3) Faça o load como de costume (programmer da ColorLight i9).
+Se surgir alguma mensagem do tipo "No module named ...", faça a instalação do módulo faltante no ambiente virtual Python rodando:
 
-### BitDogLab (RP2040 receptor)
-1) Instale Raspberry Pi Pico SDK e toolchain (VSCode tasks já apontam para `~/.pico-sdk`).
-2) Compile:
+```sh
+pip3 install nome_do_modulo
 ```
-mkdir -p software/build && cd software/build
-cmake ..
-ninja
+
+E continue repetindo o processo até que não haja mais erros do tipo.
+
+(Se assegure de estar baixando essas dependências no ambiente virtual Python, e não no sistema global.)
+
+Caso essas dependências já estejam instaladas no sistema global, pode acontecer de o ambiente virtual não conseguir encontrá-las. Nesse caso, você pode tentar instalar as dependências diretamente no ambiente virtual com o comando acima.
+
+### 3. Compilar o firmware
+```sh
+# Compile o firmware
+make -C ip
 ```
-3) Grave o UF2 com `picotool` ou arraste para o dispositivo em modo BOOTSEL.
 
-## Protocolo
-- Payload TX (FPGA): ASCII simples `T=xx.xx;H=yy.yy\n` (ver `firmware_lora.c`).
-- RX (BitDogLab): faz parsing do formato acima e exibe no OLED; mostra RSSI/SNR quando não reconhece.
+Se houver algum erro, tente executar o comando:
 
-## Próximos passos (para produção)
-- Implementar acessos reais aos CSRs de `i2c0` e `lora` no firmware do SoC (conforme `build/generated/csr.h`).
-- Opcional: usar DIO0 (IRQ) e RESET no módulo LoRa, adicionar GPIOs no SoC.
-- Validar frequência LoRa (EU868/US915) e parâmetros de modulação (BW/SF/CR).
-- Caso use cabeçalho diferente na BitDogLab, ajuste `lora_pins.h`.
+```sh
+# Limpa arquivos de build anteriores
+make -C ip clean
+```
 
-## Avisos
-- O arquivo `pins_colorlight_i9_ext.py` contém pinos fictícios como exemplo, substitua antes do build.
-- O driver LoRa incluído é mínimo para RX contínuo e pode requerer ajustes finos conforme a placa/módulo.
+E tente novamente.
+
+### 4. Gravar o bitstream e o firmware na placa
+Primeiro, execute no terminal o seguinte comando:
+
+```sh
+which openFPGALoader
+```
+
+Copie o caminho descoberto e execute os próximos passos, colocando o caminho no local indicado. O openFPGALoader é uma ferramenta utilizada para carregar arquivos para o FPGA, e já vem por padrão no OSS CAD Suite.
+
+```sh
+# Grave o bitstream na placa
+/caminho/descoberto -b colorlight-i5 build/colorlight_i5/gateware/colorlight_i5.bit
+```
+
+### 5. Executar via terminal serial na placa FPGA
+
+Execute o seguinte comando:
+
+```sh
+# Abra o terminal serial (verifique a porta correta, pode ser ttyACM0 ou ttyACM1)
+litex_term /dev/ttyACM0 --kernel ip/firmware.bin
+```
+
+Caso ocorra algum erro com relação a porta, tente mudar para "ttyACM1", ou verifique a porta utilizada no momento em que foi colocado o FPGA no dispositivo.
+
+Após executar o comando acima aperte "enter" e digite "reboot". Automaticamente o FPGA será reiniciado e o programa será executado e mostrado no terminal.
+
+### Software (BitDogLab receptor)
+
+Para facilitar a compilação e o upload do firmware no BitDogLab, utilize a extensão "Raspberry Pi Pico Project" do Visual Studio Code.
+
+Abra o painel lateral da extensão e clique em "Compile Project" para compilar o firmware. Após a compilação, conecte o BitDogLab ao computador enquanto mantém pressionado o botão BOOTSEL para entrar no modo de bootloader USB. Em seguida, clique em "Run Project" na extensão para fazer o upload do firmware para o BitDogLab.
