@@ -22,7 +22,7 @@ from litex.soc.cores.led import LedChaser
 from litex.build.generic_platform import Subsignal, Pins, IOStandard
 
 from litex.soc.interconnect.csr import *
-from litex.soc.cores.i2c import I2CMaster
+from litex.soc.cores.bitbang import I2CMaster
 from litex.soc.cores.spi import SPIMaster
 from litex.soc.cores.gpio import GPIOIn, GPIOOut
 
