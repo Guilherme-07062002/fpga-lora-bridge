@@ -1,10 +1,9 @@
-// lora_RFM95.c
-#include "lora_RFM95.h"
+#include "lora_rfm95.h"
 
-#include <stdio.h> // Para printf
-#include <string.h> // Para memcpy
-#include <generated/csr.h> // Para acesso aos registradores CSR do LiteX
-#include <system.h>       // Para busy_wait_us, busy_wait_ms
+#include <stdio.h> 
+#include <string.h> 
+#include <generated/csr.h>
+#include <system.h>
 
 // ============================================
 // === Definições Internas ===

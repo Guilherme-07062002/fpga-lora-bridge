@@ -3,7 +3,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
-
 #include <irq.h>
 #include <uart.h>
 #include <console.h>
@@ -11,11 +10,8 @@
 #include <generated/soc.h>
 #include <system.h>
 
-// Inclui a biblioteca do sensor AHT10
-#include "aht10.h"
-
-// Inclui a biblioteca LoRa
-#include "lora_RFM95.h"
+#include "aht10.h" // Sensor de temperatura e umidade AHT10
+#include "lora_rfm95.h" // LoRa RFM95
 
 // -------------------------------------------------------------
 // Protótipos locais

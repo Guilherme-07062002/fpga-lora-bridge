@@ -4,7 +4,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <stddef.h> // Para size_t
+#include <stddef.h>
 
 // ============================
 // === Funções Públicas ===
