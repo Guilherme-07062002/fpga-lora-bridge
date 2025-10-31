@@ -9,9 +9,9 @@ O transmissor lê temperatura/umidade do AHT10 (I2C) e envia periodicamente via 
 ## Estrutura
 
 - hardware/
-  - Código do SoC LiteX com IPs I2C e LoRa.
+  - Contém o código do SoC LiteX, IPs (I2C, SPI, LoRa) e firmware do transmissor.
 - software/ (BitDogLab receptor)
-  - Firmware para RP2040 que recebe dados LoRa e exibe no OLED.
+  - Contém o firmware para o microcontrolador RP2040 da BitDogLab (nó receptor), que gerencia a recepção LoRa e a exibição no OLED.
 
 
 ## Como Compilar e Executar
@@ -116,3 +116,69 @@ Após executar o comando acima aperte "enter" e digite "reboot". Automaticamente
 Para facilitar a compilação e o upload do firmware no BitDogLab, utilize a extensão "Raspberry Pi Pico Project" do Visual Studio Code.
 
 Abra o painel lateral da extensão e clique em "Compile Project" para compilar o firmware. Após a compilação, conecte o BitDogLab ao computador enquanto mantém pressionado o botão BOOTSEL para entrar no modo de bootloader USB. Em seguida, clique em "Run Project" na extensão para fazer o upload do firmware para o BitDogLab.
+
+## Diagrama de Blocos e Funcionamento
+
+Diagrama de alto nível dos blocos e conexões físicas entre os nós transmissor (FPGA) e receptor (BitDogLab):
+
+![](./diagrama.png)(Diagrama de Blocos)
+
+– O nó da FPGA lê o AHT10 via I2C a cada 10 s e envia os valores por SPI ao rádio LoRa (RFM95/96), que transmite na banda de 915 MHz.
+– O BitDogLab opera como receptor: recebe os pacotes via LoRa, interpreta o payload e atualiza o display OLED SSD1306.
+
+## Pinos e conexões (importante para a montagem)
+
+FPGA ColorLight (board i9; níveis 3V3 LVCMOS):
+
+- SPI para LoRa RFM95/96 (definidos em `hardware/ip/colorlight_i5.py`):
+  - SCK: G20
+  - MOSI: L18
+  - MISO: M18
+  - CS_n: N17
+  - RESET (GPIO dedicado): L20
+  - Observação: DIO0 não é utilizado no transmissor (polling de IRQ é feito por registrador).
+
+- I2C para AHT10 (bit-bang por CSR):
+  - SCL: U17
+  - SDA: U18
+  - Endereço do AHT10: 0x38
+
+- Conectores: os sinais acima devem ser roteados para um conector IDC de 14 pinos (LoRa) e um JST de 4 pinos (I2C), seguindo o padrão da BitDogLab. Caso utilize o conector IDC central, mantenha o mapeamento de sinais conforme os pinos de FPGA listados acima.
+
+BitDogLab (RP2040):
+
+- LoRa RFM95/96 (SPI0), conforme `software/software.c`:
+  - MISO: GP16
+  - CS:   GP17
+  - SCK:  GP18
+  - MOSI: GP19
+  - RST:  GP20
+  - DIO0: GP8
+
+- OLED SSD1306 (I2C1), conforme `software/inc/ssd1306.c` e `ssd1306_conf.h`:
+  - SDA: GP14
+  - SCL: GP15
+  - Endereço: 0x3C
+
+## Parâmetros e frequências
+
+- Clock do SoC (sys_clk_freq): 60 MHz (padrão do script; pode ser alterado por argumento `--sys-clk-freq`).
+- SPI (FPGA -> LoRa): 1 MHz (configurado em `SPIMaster`).
+- I2C (FPGA -> AHT10): bit-bang, aproximadamente 100 kHz (delays implementados no driver).
+- Rádio LoRa (ambos os lados):
+  - Frequência: 915 MHz
+  - BW ≈ 62.5 kHz, SF12, CR 4/8
+  - Preamble = 12, SyncWord = 0x12
+  - PA_BOOST +20 dBm habilitado
+
+## Formato dos dados (payload LoRa)
+
+O transmissor envia uma struct compacta de 4 bytes, definida em `hardware/ip/aht10.h` como:
+
+- int16_t temperatura;  // centésimos de °C (ex.: 2534 => 25.34 °C)
+- int16_t umidade;      // centésimos de % (ex.: 4567 => 45.67 %)
+
+Características:
+
+- Período de envio: a cada 10 segundos (`firmware_lora.c`).
+- O receptor (BitDogLab) reconstrói a struct exatamente no mesmo layout e divide por 100 para exibir em ponto fixo.
