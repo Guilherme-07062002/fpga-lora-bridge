@@ -114,7 +114,7 @@ litex_term /dev/ttyACM0 --kernel hardware/ip/firmware.bin
 
 Caso ocorra algum erro com relação a porta, tente mudar para "ttyACM1", ou verifique a porta utilizada no momento em que foi colocado o FPGA no dispositivo.
 
-Após executar o comando acima aperte "enter" e digite "reboot". Automaticamente o FPGA será reiniciado e o programa será executado e mostrado no terminal.
+Após executar o comando acima aperte **enter** e digite `reboot`. Automaticamente o FPGA será reiniciado e o programa será executado e mostrado no terminal.
 
 ### Software (receptor BitDogLab)
 
