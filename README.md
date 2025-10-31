@@ -1,7 +1,12 @@
-# FPGA LoRa Bridge (Tarefa 05)
+# FPGA - Tarefa 05
+
+Aluno: Guilherme Gomes de Medeiros
+
+## Telemetria via LoRa com FPGA ColorLight i5 e BitDogLab
+
 
 Este projeto implementa uma ponte de telemetria via LoRa usando:
-- FPGA ColorLight i5 rodando um SoC LiteX/VexRiscv (nó transmissor)
+- FPGA ColorLight i5 rodando um SoC LiteX (nó transmissor)
 - BitDogLab como nó receptor com display OLED SSD1306
 
 O transmissor lê temperatura/umidade do AHT10 (I2C) e envia periodicamente via LoRa RFM96. O receptor exibe os dados no display OLED.
@@ -16,7 +21,7 @@ O transmissor lê temperatura/umidade do AHT10 (I2C) e envia periodicamente via 
 
 ## Como Compilar e Executar
 
-### Hardware (FPGA ColorLight i5)
+### Hardware - FPGA ColorLight i9 (target LiteX: colorlight_i5)
 
 ### 1. Preparar o ambiente OSS CAD SUITE
 
@@ -32,7 +37,7 @@ Ou então para baixar por linha de comando:
 
 ```sh
 # Acesse o diretório tools
-cd tools
+cd hardware/tools
 
 # Baixe a versão mais recente do oss-cad-suite (verifique a página de releases para a versão mais atual)
 wget https://github.com/YosysHQ/oss-cad-suite-build/releases/download/2025-10-08/oss-cad-suite-linux-x64-20251008.tgz
@@ -45,16 +50,16 @@ tar -xvzf oss-cad-suite-linux-x64-20251008.tgz
 
 ```sh
 # Retorne ao diretório raiz do projeto
-cd ..
+cd ../..
 
 # Acionar o ambiente do OSS CAD SUITE
-source tools/oss-cad-suite/environment
+source hardware/tools/oss-cad-suite/environment
 
 # Busque o caminho do python3
 which python3
 
 # Gerar o SoC
-caminho_do_python3 ./ip/colorlight_i5.py --board i9 --revision 7.2 --build --cpu-type=picorv32  --ecppack-compress
+caminho_do_python3 ./hardware/ip/colorlight_i5.py --board i9 --revision 7.2 --build --cpu-type=picorv32  --ecppack-compress
 ```
 
 Se surgir alguma mensagem do tipo "No module named ...", faça a instalação do módulo faltante no ambiente virtual Python rodando:
@@ -72,14 +77,14 @@ Caso essas dependências já estejam instaladas no sistema global, pode acontece
 ### 3. Compilar o firmware
 ```sh
 # Compile o firmware
-make -C ip
+make -C hardware/ip
 ```
 
 Se houver algum erro, tente executar o comando:
 
 ```sh
 # Limpa arquivos de build anteriores
-make -C ip clean
+make -C hardware/ip clean
 ```
 
 E tente novamente.
@@ -95,7 +100,7 @@ Copie o caminho descoberto e execute os próximos passos, colocando o caminho no
 
 ```sh
 # Grave o bitstream na placa
-/caminho/descoberto -b colorlight-i5 build/colorlight_i5/gateware/colorlight_i5.bit
+/caminho/descoberto -b colorlight-i5 hardware/build/colorlight_i5/gateware/colorlight_i5.bit
 ```
 
 ### 5. Executar via terminal serial na placa FPGA
@@ -104,24 +109,26 @@ Execute o seguinte comando:
 
 ```sh
 # Abra o terminal serial (verifique a porta correta, pode ser ttyACM0 ou ttyACM1)
-litex_term /dev/ttyACM0 --kernel ip/firmware.bin
+litex_term /dev/ttyACM0 --kernel hardware/ip/firmware.bin
 ```
 
 Caso ocorra algum erro com relação a porta, tente mudar para "ttyACM1", ou verifique a porta utilizada no momento em que foi colocado o FPGA no dispositivo.
 
 Após executar o comando acima aperte "enter" e digite "reboot". Automaticamente o FPGA será reiniciado e o programa será executado e mostrado no terminal.
 
-### Software (BitDogLab receptor)
+### Software (receptor BitDogLab)
 
 Para facilitar a compilação e o upload do firmware no BitDogLab, utilize a extensão "Raspberry Pi Pico Project" do Visual Studio Code.
 
-Abra o painel lateral da extensão e clique em "Compile Project" para compilar o firmware. Após a compilação, conecte o BitDogLab ao computador enquanto mantém pressionado o botão BOOTSEL para entrar no modo de bootloader USB. Em seguida, clique em "Run Project" na extensão para fazer o upload do firmware para o BitDogLab.
+Abra uma nova janela do VS Code na pasta `software/` do projeto.
+
+Clique para exibir o painel lateral da extensão e selecione o botão "Compile Project" para compilar o firmware. Após a compilação, conecte o BitDogLab ao computador enquanto mantém pressionado o botão BOOTSEL para entrar no modo de bootloader USB. Em seguida, clique em "Run Project" na extensão para fazer o upload do firmware para o BitDogLab.
 
 ## Diagrama de Blocos e Funcionamento
 
 Diagrama de alto nível dos blocos e conexões físicas entre os nós transmissor (FPGA) e receptor (BitDogLab):
 
-![](./diagrama.png)(Diagrama de Blocos)
+![](./diagrama.png) Figura: Diagrama de Blocos
 
 – O nó da FPGA lê o AHT10 via I2C a cada 10 s e envia os valores por SPI ao rádio LoRa (RFM95/96), que transmite na banda de 915 MHz.
 – O BitDogLab opera como receptor: recebe os pacotes via LoRa, interpreta o payload e atualiza o display OLED SSD1306.
