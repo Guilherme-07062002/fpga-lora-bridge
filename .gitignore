@@ -115,6 +115,7 @@ cscope.out
 
 tools/oss-cad-suite*
 build
+build/**
 
 *.d
 
